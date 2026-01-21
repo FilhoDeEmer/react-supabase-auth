@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import AuthLayout from "../layout/AuthLayout";
+import Button from "../components/ui/Button";
+import Input from "../components/ui/Input";
 
 export default function Login() {
   const { signInWithPassword, user, signInWithGoogle } = useAuth();
@@ -12,7 +14,9 @@ export default function Login() {
 
   useEffect(() => {
     if (user) {
-      const to = redirectParam ? decodeURIComponent(redirectParam) : "/dashboard";
+      const to = redirectParam
+        ? decodeURIComponent(redirectParam)
+        : "/dashboard";
       navigate(to, { replace: true });
     }
   }, [user, navigate, redirectParam]);
@@ -56,7 +60,7 @@ export default function Login() {
           <label className="text-sm text-zinc-300" htmlFor="email">
             Email
           </label>
-          <input
+          <Input
             id="email"
             type="email"
             autoComplete="email"
@@ -64,7 +68,6 @@ export default function Login() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full h-11 rounded-lg bg-zinc-950/60 border border-zinc-800 px-3 text-zinc-100 placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-500/60"
           />
         </div>
 
@@ -72,7 +75,7 @@ export default function Login() {
           <label className="text-sm text-zinc-300" htmlFor="password">
             Senha
           </label>
-          <input
+          <Input
             id="password"
             type="password"
             autoComplete="current-password"
@@ -80,7 +83,6 @@ export default function Login() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full h-11 rounded-lg bg-zinc-950/60 border border-zinc-800 px-3 text-zinc-100 placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-500/60"
           />
         </div>
 
@@ -90,22 +92,17 @@ export default function Login() {
           </div>
         )}
         <br></br>
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full h-11 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 disabled:hover:bg-indigo-600 transition font-semibold"
-        >
+        <Button type="submit" disabled={loading}>
           {loading ? "Entrando..." : "Entrar"}
-        </button>
+        </Button>
         <br></br>
         <br></br>
-        <button
+        <Button
           type="button"
           onClick={() => signInWithGoogle()}
-          className="w-full h-11 rounded-lg border border-zinc-800 hover:bg-zinc-950/60 transition font-semibold"
-        >
+          variant="secondary">
           Entrar com Google
-        </button>
+        </Button>
         <br></br>
         <br></br>
         <div className="flex items-center justify-between text-sm">

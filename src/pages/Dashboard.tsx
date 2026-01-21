@@ -1,18 +1,29 @@
-import { useAuth } from "../auth/AuthProvider";
-
+import DashboardLayout from "../layout/DashboardLayout";
 
 export default function Dashboard() {
-  const { user, signOut } = useAuth();
-
   return (
-    <div style={{ maxWidth: 720, margin: "40px auto" }}>
-      <h1>Dashboard (protegido)</h1>
+    <DashboardLayout title="Inicio">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
+          <p className="text-sm text-zinc-400">Card 1</p>
+          <p className="text-2xl font-semibold mt-2">123</p>
+        </div>
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
+          <p className="text-sm text-zinc-400">Card 2</p>
+          <p className="text-2xl font-semibold mt-2">R$ 9.999,99</p>
+        </div>
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
+          <p className="text-sm text-zinc-400">Card 3</p>
+          <p className="text-2xl font-semibold mt-2">Ativo</p>
+        </div>
+      </div>
 
-      <p>
-        Logado como: <b>{user?.email}</b>
+      <div className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
+      <h2 className="font-semibold">Área principal</h2>
+      <p className="text-sm text-zinc-400 mt-2">
+        Conteudo Real do dashbord (perfilm lista, gráficos, etc).
       </p>
-
-      <button onClick={() => signOut()}>Sair</button>
-    </div>
+      </div>
+      </DashboardLayout>
   );
 }
