@@ -10,7 +10,7 @@ export default function Button
     className = "", 
     ...props 
 }: ButtonProps) {
-    const base = "h-11 px-12  rounded focus:ring-4 transition-colors";
+    const base = "inline-flex items-center justify-center p- rounded-lg font-semibold transition disable:opacity-60";
     const variants = {
         primary: "bg-indigo-600 items-center hover:bg-indigo-500 text-white",
         secondary: "border border-zinc-800 bg-zinc-950/400 hover:bg-zinc-950/60 text-zinc-100",

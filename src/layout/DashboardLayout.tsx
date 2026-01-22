@@ -86,7 +86,7 @@ export default function DashboardLayout({
   const desktopPaddingLeft = collapsed ? "lg:pl-20" : "lg:pl-64";
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+    <div className="min-h-screen bg-zinc-950 text-zinc-10 overflow-x-hidden">
       {/* Mobile Sidebar */}
       {mobileOpen && (
         <div
