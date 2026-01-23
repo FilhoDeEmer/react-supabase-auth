@@ -1,72 +1,108 @@
-@tailwind utilities;
+/* Tailwind v4 */
 @import "tailwindcss";
-@import "tailwindcss/preflight";
 
+/* ===== Base do app (não briga com Tailwind) ===== */
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* tipografia */
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
   line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* ajuda o navegador a renderizar temas corretamente */
+  color-scheme: dark;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+/* garante altura total pro layout ocupar a tela */
+html,
+body,
+#root {
+  height: 100%;
 }
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+
+  /* cores padrão do seu app (zinc) */
+  background: #09090b; /* zinc-950 */
+  color: #f4f4f5;      /* zinc-100 */
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+/* links: neutros e combinando com indigo */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
+/* seleção de texto (detalhe bonito) */
+::selection {
+  background: rgba(99, 102, 241, 0.35); /* indigo-500 com transparência */
+}
+
+/* scrollbars (opcional, mas combina com dark) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(113, 113, 122, 0.6) transparent; /* zinc-500 */
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(113, 113, 122, 0.6);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ===== Form controls: não “mata” Tailwind, só melhora o padrão ===== */
+input,
+select,
+textarea,
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  font: inherit;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+/* remove o outline feio do browser, mantendo acessível via focus-visible */
+:focus {
+  outline: none;
+}
+:focus-visible {
+  outline: 2px solid rgba(99, 102, 241, 0.65); /* indigo */
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+/* ===== Tamanhos de tela (helpers opcionais) =====
+   Se você quiser, pode usar essas classes no HTML:
+   .container-app (largura e padding padrão)
+*/
+.container-app {
+  width: 100%;
+  margin: 0 auto;
+  padding-left: 1rem;  /* 16px */
+  padding-right: 1rem; /* 16px */
+}
+
+/* sm */
+@media (min-width: 640px) {
+  .container-app {
+    padding-left: 1.5rem;  /* 24px */
+    padding-right: 1.5rem; /* 24px */
   }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
+}
+
+/* lg */
+@media (min-width: 1024px) {
+  .container-app {
+    padding-left: 2rem;  /* 32px */
+    padding-right: 2rem; /* 32px */
+    max-width: 1280px;
   }
 }

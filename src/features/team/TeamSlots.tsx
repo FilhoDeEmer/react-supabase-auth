@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import Button from "../../components/ui/Button";
 import { clearSlot, ensureTeamSlots, setPokemonInSlot } from "./teamService";
+import {X} from "lucide-react"
 
 type TeamRow = {
   slot: number;
@@ -193,17 +194,25 @@ export default function TeamSlots() {
           return (
             <div
               key={r.slot}
-              className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4 space-y-3"
+              className="relative group rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4 space-y-3 min-w-0 overflow-hidden"
             >
+              {filled && (
+                <button
+                  onClick={() => onClear(r.slot)}
+                  title="Remover Pokémon do slot"
+                  className="  absolute top-2 right-2 opacity-0 group-hover:opacity-100 
+                               inline-flex items-center justify-center
+                               h-7 w-7 rounded-full bg-zinc-800 text-zinc-300
+                               hover:bg-red-600 hover:text-white transition
+                                disabled:opacity-40 disabled:hover:bg-zinc-800 disabled:hover:text-zinc-300"
+                >
+                  <X className="h-4 w-4"/>
+                </button>
+              )}
               <div className="flex items-center justify-between">
                 <p className="text-xs rounded-full bg-zinc-800 px-2 py-0.5 text-zinc-200">
                   Slot {r.slot}
                 </p>
-                {filled && (
-                  <span className="text-xs rounded-full bg-zinc-800 px-2 py-0.5 text-zinc-200">
-                    Ativo
-                  </span>
-                )}
               </div>
 
               <div>
@@ -237,7 +246,7 @@ export default function TeamSlots() {
                   ))}
                 </select>
 
-                <div className="grid p-2 sm:grid-cols-2">
+                <div className="pt-2">
                   <Button
                     variant="primary"
                     className="h-10 w-full"
@@ -245,15 +254,6 @@ export default function TeamSlots() {
                     disabled={savingSlot === r.slot}
                   >
                     {savingSlot === r.slot ? "Salvando..." : "Salvar"}
-                  </Button>
-
-                  <Button
-                  variant="secondary"
-                  className="h-10 w-full"
-                  onClick={() => onClear(r.slot)}
-                  disabled={savingSlot === r.slot}
-                  >
-                    X
                   </Button>
                 </div>
               </div>

@@ -2,7 +2,13 @@ import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import Button from "../components/ui/Button";
-import { Home, Settings, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Home,
+  BookOpen,
+  Settings,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
 type DashboardLayoutProps = {
   title?: string;
@@ -18,8 +24,7 @@ function SidebarContent({
 }) {
   const linkBase =
     "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition";
-  const linkActive =
-    "bg-zinc-800 text-zinc-100";
+  const linkActive = "bg-zinc-800 text-zinc-100";
   const linkInactive = "text-zinc-300 hover:bg-zinc-900 hover:text-zinc-100";
   const labelClass = collapsed ? "hidden" : "block";
 
@@ -46,6 +51,17 @@ function SidebarContent({
           <Home className="h-4 w-4" />
           <span className={labelClass}>Home</span>
         </NavLink>
+        <NavLink
+          to="/dashboard/pokedex"
+          onClick={onNavigate}
+          className={({ isActive }) =>
+            `${linkBase} ${isActive ? linkActive : linkInactive}`
+          }
+        >
+          <BookOpen className="h-4 w-4" />
+          <span className={labelClass}>Pokédex</span>
+        </NavLink>
+
         {/*Exemplo para criação de novos links*/}
         <NavLink
           to="/dashboard/settings"
@@ -101,13 +117,17 @@ export default function DashboardLayout({
       >
         {/*Botão Colapsar*/}
         <div className="h-14 px-3 flex items-center justify-end border-b border-zinc-800">
-            <Button
-                variant='ghost'
-                onClick={() => setCollapsed((v) => !v)}
-                aria-label={collapsed ? "Expandir sidebar" : "Recolher sidebar"}
-            >
-                {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-            </Button>
+          <Button
+            variant="ghost"
+            onClick={() => setCollapsed((v) => !v)}
+            aria-label={collapsed ? "Expandir sidebar" : "Recolher sidebar"}
+          >
+            {collapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+          </Button>
         </div>
         <SidebarContent collapsed={collapsed} />
       </aside>
@@ -121,41 +141,46 @@ export default function DashboardLayout({
       </aside>
 
       {/*Topbar Full Width  */}
-      
 
       {/* Main Content Area */}
-        <header className="sticky top-0 z-30 border-b border-zinc-800 bg-zinc-950/70 backdrop-blur">
-          <div className={`h-14 px-4 flex items-center justify-between ${desktopPaddingLeft}`}>
-            <div className="flex items-center gap-3">
-              <button
-                className="lg:hidden inline-flex items-center justify-center rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-sm hover:bg-zinc-900 transition"
-                onClick={() => setMobileOpen(true)}
-                aria-label="Abrir menu"
-              >
-                ☰ {/*colocar icone*/}
-              </button>
+      <header className="sticky top-0 z-30 border-b border-zinc-800 bg-zinc-950/70 backdrop-blur">
+        <div
+          className={`h-14 px-4 flex items-center justify-between ${desktopPaddingLeft}`}
+        >
+          <div className="flex items-center gap-3">
+            <button
+              className="lg:hidden inline-flex items-center justify-center rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-sm hover:bg-zinc-900 transition"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Abrir menu"
+            >
+              ☰ {/*colocar icone*/}
+            </button>
 
-              <h1 className="text-sm sm:text-base font-semibold"> {title}</h1>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="hidden sm:block text-right">
-                <p className="text-xs text-zinc-400">Logado como</p>
-                <p className="text-sm">{user?.email}</p>
-              </div>
-
-              <Button onClick={() => signOut()} variant="primary" className="w-auto h-10 px-4">
-                Sair
-              </Button>
-            </div>
+            <h1 className="text-sm sm:text-base font-semibold"> {title}</h1>
           </div>
-        </header>
-        {/* Content */}
-        <div className={desktopPaddingLeft}>
-          <main className="p-4 sm:p-6">
-            <div className="mx-auto max-w-7xl">{children}</div>
-          </main>
+
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:block text-right">
+              <p className="text-xs text-zinc-400">Logado como</p>
+              <p className="text-sm">{user?.email}</p>
+            </div>
+
+            <Button
+              onClick={() => signOut()}
+              variant="primary"
+              className="w-auto h-10 px-4"
+            >
+              Sair
+            </Button>
+          </div>
         </div>
+      </header>
+      {/* Content */}
+      <div className={desktopPaddingLeft}>
+        <main className="p-4 sm:p-6">
+          <div className="mx-auto max-w-7xl">{children}</div>
+        </main>
       </div>
+    </div>
   );
 }
