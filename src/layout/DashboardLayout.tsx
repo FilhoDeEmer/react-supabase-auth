@@ -8,6 +8,7 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  CookingPot
 } from "lucide-react";
 
 type DashboardLayoutProps = {
@@ -60,6 +61,16 @@ function SidebarContent({
         >
           <BookOpen className="h-4 w-4" />
           <span className={labelClass}>Pokédex</span>
+        </NavLink>
+        <NavLink
+          to="/dashboard/receitas"
+          onClick={onNavigate}
+          className={({ isActive }) =>
+            `${linkBase} ${isActive ? linkActive : linkInactive}`
+          }
+        >
+          <CookingPot className="h-4 w-4" />
+          <span className={labelClass}>Receitas</span>
         </NavLink>
 
         {/*Exemplo para criação de novos links*/}
