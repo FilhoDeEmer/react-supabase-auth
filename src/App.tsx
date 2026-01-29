@@ -7,6 +7,7 @@ import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Pokedex from "./pages/Pokedex";
 import Receitas from "./pages/Receitas";
+import Skills from "./pages/Skills";
 
 export default function App() {
   return(
@@ -18,6 +19,7 @@ export default function App() {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/dashboard/pokedex" element={<Pokedex/>} />
       <Route path="/dashboard/receitas" element={<Receitas/>} />
+      <Route path="/dashboard/skills" element={<Skills/>} />
       <Route
         path="/dashboard"
         element={
