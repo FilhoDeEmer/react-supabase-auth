@@ -142,7 +142,7 @@ export default function SearchRecipes() {
                 <img
                   src={getRecipeImageUrl(r.nome)}
                   alt={r.nome}
-                  className="h-26 w-26 object-cover"
+                  className="h-24 w-24 object-cover"
                   onError={(e) => (e.currentTarget.src = RECIPE_PLACEHOLDER)}
                 />
                 <div className="mt-3 border-t border-zinc-800/60 pt-3" />

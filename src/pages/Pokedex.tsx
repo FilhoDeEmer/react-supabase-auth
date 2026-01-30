@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "../layout/DashboardLayout";
 import { supabase } from "../lib/supabase";
 import Button from "../components/ui/Button";
+import { getPokemonImageUrl, RECIPE_PLACEHOLDER } from "../lib/urlImages";
 
 type PokemonBaseRow = {
   id: number;
   pokemon: string;
-  dex_num: number | null;
+  dex_num: number;
   specialty: string | null;
   sleep_type: string | null;
   tipo: null | {
@@ -51,7 +52,7 @@ export default function Pokedex() {
             sleep_type,
             tipo:type ( tipo, berry )
           `,
-          { count: "exact" }
+          { count: "exact" },
         )
         .order("dex_num", { ascending: true })
         .range(from, to);
@@ -149,15 +150,20 @@ export default function Pokedex() {
                       #{p.dex_num ?? "—"} • {p.tipo?.tipo ?? "Sem tipo"}
                     </p>
                   </div>
+                  <img
+                    src={getPokemonImageUrl(p.dex_num)}
+                    alt={p.pokemon}
+                    className="h-24 w-24 object-cover"
+                    onError={(e) => (e.currentTarget.src = RECIPE_PLACEHOLDER)}
+                  />
+                </div>
 
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-xs text-zinc-400">Sleep type</p>
+                  <p>{p.sleep_type ?? "—"}</p>
                   <span className="text-[10px] rounded-full bg-zinc-800 px-2 py-0.5 text-zinc-200">
                     {p.specialty ?? "—"}
                   </span>
-                </div>
-
-                <div className="mt-3 text-sm text-zinc-300">
-                  <p className="text-xs text-zinc-400">Sleep type</p>
-                  <p>{p.sleep_type ?? "—"}</p>
                 </div>
 
                 {/* espaço pra botões futuros */}
