@@ -9,6 +9,7 @@ import Pokedex from "./pages/Pokedex";
 import Receitas from "./pages/Receitas";
 import Skills from "./pages/Skills";
 import Ingredientes from "./pages/Ingredientes";
+import Banco from "./pages/Banco";
 
 export default function App() {
   return(
@@ -22,6 +23,7 @@ export default function App() {
       <Route path="/dashboard/receitas" element={<Receitas/>} />
       <Route path="/dashboard/skills" element={<Skills/>} />
       <Route path="/dashboard/ingredientes" element={<Ingredientes/>} />
+      <Route path="/dashboard/banco" element={<Banco/>} />
       <Route
         path="/dashboard"
         element={

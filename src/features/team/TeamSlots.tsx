@@ -3,19 +3,21 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import Button from "../../components/ui/Button";
 import { clearSlot, ensureTeamSlots, setPokemonInSlot } from "./teamService";
-import {X} from "lucide-react"
+import { X } from "lucide-react";
+import { getPokemonImageUrl, RECIPE_PLACEHOLDER } from "../../lib/urlImages";
 
 type TeamRow = {
   slot: number;
   pokemon_banco: null | {
     id: number;
     level: number | null;
-    pokemon_base: null | {
+    pokemon_base: {
       pokemon: string;
-      dex_num: number | null;
+      dex_num: number;
       specialty: string | null;
     };
     natures: null | { nome: string | null };
+    is_shiny: boolean | null;
   };
 };
 
@@ -56,6 +58,7 @@ export default function TeamSlots() {
                     pokemon_banco:pokemon_banco_id (
                         id,
                         level,
+                        is_shiny,
                         pokemon_base:id_base ( pokemon, dex_num, specialty),
                         natures: nature (nome)
                     )`,
@@ -206,7 +209,7 @@ export default function TeamSlots() {
                                hover:bg-red-600 hover:text-white transition
                                 disabled:opacity-40 disabled:hover:bg-zinc-800 disabled:hover:text-zinc-300"
                 >
-                  <X className="h-4 w-4"/>
+                  <X className="h-4 w-4" />
                 </button>
               )}
               <div className="flex items-center justify-between">
@@ -217,6 +220,21 @@ export default function TeamSlots() {
 
               <div>
                 <p className="font-semibold">{displayName}</p>
+                {current?.pokemon_base?.dex_num ? (
+                  <img
+                    src={getPokemonImageUrl(
+                      current.pokemon_base.dex_num, current.is_shiny
+                    )}
+                    alt={r.pokemon_banco?.pokemon_base.pokemon}
+                    className="h-24 w-24 object-contain items-center"
+                    onError={(e) => (e.currentTarget.src = RECIPE_PLACEHOLDER)}
+                  />
+                ) : (
+                  <div className="mx-auto mt-2 h-24 w-24 rounded-lg bg-zinc-950/40 border border-zinc-800 flex items-center justify-center text-xs text-zinc-500">
+                    Vazio
+                  </div>
+                )}
+
                 <p className="text-xs text-zinc-400">
                   {displayLevel != null ? `Lv ${displayLevel}` : "Sem level"}
                   {current?.natures?.nome ? ` • ${current.natures.nome}` : ""}

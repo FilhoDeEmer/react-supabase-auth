@@ -57,14 +57,10 @@ export function getTypeImageUrl(typeName: string) {
 }
 
 // === Dex-number-based ===
-export function getPokemonImageUrl(dexNum: number) {
-  return `https://www.serebii.net/pokemonsleep/pokemon/${dexNum}.png`;
-}
-
-export function getShinyPokemonImageUrl(dexNum: number) {
-  return `https://www.serebii.net/pokemonsleep/pokemonsleep/pokemon/shiny/${dexNum}.png`;
-  // ⚠️ se der 404, me diga — mas o padrão geralmente é:
-  // https://www.serebii.net/pokemonsleep/pokemon/shiny/${dexNum}.png
+export function getPokemonImageUrl(dexNum: number, isShiny?: boolean) {
+  return isShiny
+    ? `https://www.serebii.net/pokemonsleep/pokemon/shiny/${dexNum}.png`
+    : `https://www.serebii.net/pokemonsleep/pokemon/${dexNum}.png`;
 }
 
 export function getSleepStyleImageUrl(dexNum: number) {
