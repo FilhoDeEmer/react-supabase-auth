@@ -11,7 +11,9 @@ import {
   CookingPot,
   Star,
   LeafyGreen,
-  Package2
+  Package2,
+  Menu,
+  LogOut
 } from "lucide-react";
 
 type DashboardLayoutProps = {
@@ -197,7 +199,7 @@ export default function DashboardLayout({
               onClick={() => setMobileOpen(true)}
               aria-label="Abrir menu"
             >
-              ☰ {/*colocar icone*/}
+              <Menu className="h-4 w-4" />
             </button>
 
             <h1 className="text-sm sm:text-base font-semibold"> {title}</h1>
@@ -214,7 +216,7 @@ export default function DashboardLayout({
               variant="primary"
               className="w-auto h-10 px-4"
             >
-              Sair
+              <LogOut className="h-4 w-4" />
             </Button>
           </div>
         </div>

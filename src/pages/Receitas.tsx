@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import Button from "../components/ui/Button";
 import FilterPills from "../components/ui/FilterPills";
 import { getRecipeImageUrl, RECIPE_PLACEHOLDER } from "../lib/urlImages";
+import Pagination from "../components/ui/Pagination";
 
 const RECIPE_TYPE_OPTIONS = [
   { label: "Todas", value: "all" },
@@ -181,31 +182,13 @@ export default function SearchRecipes() {
         )}
       </div>
       {/*Paginação */}
-      <div className="mt-6 flex items-center justify-between">
-        <p className="text-sm text-zinc-400">
-          Página {page} de {totalPages}
-        </p>
-
-        <div className="flex gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-          >
-            Anterior
-          </Button>
-
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page >= totalPages}
-          >
-            Próxima
-          </Button>
-        </div>
-      </div>
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        totalItems={total}
+        pageSize={PAGE_SIZE}
+      />
     </DashboardLayout>
   );
 }

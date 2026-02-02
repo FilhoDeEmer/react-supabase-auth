@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../auth/AuthProvider";
 import Button from "../../components/ui/Button";
 import { clearSlot, ensureTeamSlots, setPokemonInSlot } from "./teamService";
 import { X } from "lucide-react";
@@ -28,6 +29,7 @@ type PokemonBancoOption = {
 };
 
 export default function TeamSlots() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<TeamRow[]>([]);
   const [options, setOptions] = useState<PokemonBancoOption[]>([]);
@@ -45,6 +47,8 @@ export default function TeamSlots() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   async function loadAll() {
+    if (!user) return;
+
     setErrorMsg(null);
     setLoading(true);
     try {
@@ -63,6 +67,7 @@ export default function TeamSlots() {
                         natures: nature (nome)
                     )`,
         )
+        .eq("user_id", user.id)
         .order("slot", { ascending: true });
 
       if (teamErr) throw teamErr;
@@ -84,6 +89,7 @@ export default function TeamSlots() {
                         pokemon_base: id_base (pokemon,dex_num)    
                         `,
         )
+        .eq("user_id", user.id)
         .order("level", { ascending: false });
 
       if (bancoErr) throw bancoErr;
@@ -111,7 +117,7 @@ export default function TeamSlots() {
 
   useEffect(() => {
     loadAll();
-  }, []);
+  }, [user?.id]);
 
   const optionsById = useMemo(() => {
     const m = new Map<number, PokemonBancoOption>();
@@ -120,6 +126,8 @@ export default function TeamSlots() {
   }, [options]);
 
   async function onSave(slot: number) {
+    if (!user) return;
+
     setErrorMsg(null);
     setSavingSlot(slot);
     try {

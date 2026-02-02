@@ -5,11 +5,12 @@ import { useAuth } from "../auth/AuthProvider";
 import Button from "../components/ui/Button";
 import { getPokemonImageUrl, RECIPE_PLACEHOLDER } from "../lib/urlImages";
 import { Plus, Sparkles, X } from "lucide-react";
+import Pagination from "../components/ui/Pagination";
 
 type PokemonBancoRow = {
   id: number;
   level: number | null;
-  natures: null | { id:number; nome: string | null };
+  natures: null | { id: number; nome: string | null };
   is_shiny: boolean | null;
   gold_seed: string | null;
   hab_level: number | null;
@@ -39,6 +40,23 @@ type FormState = {
 
 const PAGE_SIZE = 24;
 
+const baseSelect = `
+  id,
+  level,
+  is_shiny,
+  gold_seed,
+  hab_level,
+  pokemon_base:id_base!inner (
+    id,
+    pokemon,
+    dex_num,
+    specialty,
+    type,
+    tipo:type (id, tipo, berry)
+  ),
+  natures:nature (id, nome)
+`;
+
 export default function Banco() {
   const { user } = useAuth();
   const [search, setSearch] = useState("");
@@ -50,9 +68,21 @@ export default function Banco() {
   const [natureOption, setNatureOptions] = useState<NatureOption[]>([]);
   const [total, setTotal] = useState(0);
 
+  const [dex, setDex] = useState<string>("");
+  const [name, setName] = useState<string>("");
+  const [levelMin, setLevelMin] = useState<string>("");
+  const [levelMax, setLevelMax] = useState<string>("");
+  const [typeId, setTypeId] = useState<string>(""); // id do tipo (tabela tipo)
+
   //modal
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const [debouncedName, setDebouncedName] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedName(name.trim()), 300);
+    return () => clearTimeout(t);
+  }, [name]);
 
   const [form, setForm] = useState<FormState>({
     id_base: "",
@@ -66,6 +96,18 @@ export default function Banco() {
     [form.id],
   );
 
+  type TipoOption = { id: number; tipo: string | null };
+  const [typeOptions, setTypeOptions] = useState<TipoOption[]>([]);
+
+  async function loadTypes() {
+    const { data, error } = await supabase
+      .from("tipo")
+      .select("id, tipo")
+      .order("tipo", { ascending: true });
+
+    if (!error) setTypeOptions((data ?? []) as any);
+  }
+
   async function loadAll() {
     if (!user) return;
 
@@ -73,40 +115,51 @@ export default function Banco() {
     setErrorMsg(null);
 
     try {
-      const { data, error } = await supabase
+      const from = (page - 1) * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
+      let q = supabase
         .from("pokemon_banco")
-        .select(
-          `
-                id,
-                level,
-                is_shiny,
-                gold_seed,
-                hab_level,
-                pokemon_base: id_base (id, pokemon, dex_num, specialty),
-                natures: nature (id,nome)
-                `,
-        )
-        .eq("user_id", user.id)
-        .order("level", { ascending: false });
+        .select(baseSelect, { count: "exact" })
+        .eq("user_id", user.id);
 
+      if (dex.trim()) {
+        const dexNum = Number(dex.trim());
+        if (!Number.isNaN(dexNum)) {
+          q = q.eq("pokemon_base.dex_num", dexNum);
+        }
+      }
+
+      if (debouncedName) {
+        q = q.ilike("pokemon_base.pokemon", `%${debouncedName}%`);
+      }
+
+      if (levelMin.trim()) {
+        const min = Number(levelMin);
+        if (!Number.isNaN(min)) q = q.gte("level", min);
+      }
+      if (levelMax.trim()) {
+        const max = Number(levelMax);
+        if (!Number.isNaN(max)) q = q.lte("level", max);
+      }
+
+      if (typeId) {
+        q = q.eq("pokemon_base.type", Number(typeId));
+      }
+
+      q = q.order("dex_num", {
+        foreignTable: "pokemon_base",
+        ascending: true,
+        nullsFirst: false,
+      });
+
+      q = q.range(from, to);
+
+      const { data, error, count } = await q;
       if (error) throw error;
+
       setItems((data ?? []) as any);
-
-      const { data: baseData, error: baseErr } = await supabase
-        .from("pokemon_base")
-        .select("id, pokemon, dex_num")
-        .order("dex_num", { ascending: true });
-
-      if (baseErr) throw baseErr;
-      setPokemonOptions((baseData ?? []) as any);
-
-      const { data: natData, error: natErr } = await supabase
-        .from("natures")
-        .select("id, nome")
-        .order("nome", { ascending: true });
-
-      if (natErr) throw natErr;
-      setNatureOptions((natData ?? []) as any);
+      setTotal(count ?? 0);
     } catch (e: any) {
       setErrorMsg(e?.message ?? "Falha ao carregar");
     } finally {
@@ -119,8 +172,11 @@ export default function Banco() {
   }, [total]);
 
   useEffect(() => {
+    loadTypes();
+  }, []);
+  useEffect(() => {
     loadAll();
-  }, [user?.id]);
+  }, [user?.id, page, dex, debouncedName, levelMin, levelMax, typeId]);
 
   function openCreate() {
     setForm({ id_base: "", level: "", nature: "", is_shiny: false });
@@ -226,6 +282,63 @@ export default function Banco() {
           </Button>
         </div>
       </div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+        <input
+          value={dex}
+          onChange={(e) => {
+            setDex(e.target.value);
+            setPage(1);
+          }}
+          placeholder="Dex #"
+          className="h-10 rounded-lg bg-zinc-950/60 border border-zinc-800 px-3 text-sm text-zinc-100"
+        />
+
+        <input
+          value={name}
+          onChange={(e) => {
+            setName(e.target.value);
+            setPage(1);
+          }}
+          placeholder="Nome"
+          className="h-10 rounded-lg bg-zinc-950/60 border border-zinc-800 px-3 text-sm text-zinc-100"
+        />
+
+        <input
+          value={levelMin}
+          onChange={(e) => {
+            setLevelMin(e.target.value);
+            setPage(1);
+          }}
+          placeholder="Lv mín"
+          className="h-10 rounded-lg bg-zinc-950/60 border border-zinc-800 px-3 text-sm text-zinc-100"
+        />
+
+        <input
+          value={levelMax}
+          onChange={(e) => {
+            setLevelMax(e.target.value);
+            setPage(1);
+          }}
+          placeholder="Lv máx"
+          className="h-10 rounded-lg bg-zinc-950/60 border border-zinc-800 px-3 text-sm text-zinc-100"
+        />
+
+        <select
+          value={typeId}
+          onChange={(e) => {
+            setTypeId(e.target.value);
+            setPage(1);
+          }}
+          className="h-10 rounded-lg bg-zinc-950/60 border border-zinc-800 px-3 text-sm text-zinc-100"
+        >
+          <option value="">Todos os tipos</option>
+          {typeOptions.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.tipo ?? "-"}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {errorMsg && (
         <div className="mt-4 rounded-lg border border-red-900/50 bg-red-950/40 px-3 py-2 text-sm text-red-200">
@@ -299,6 +412,14 @@ export default function Banco() {
           </div>
         )}
       </div>
+
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        totalItems={total}
+        pageSize={PAGE_SIZE}
+      />
 
       {/*Modal */}
       {open && (
@@ -394,17 +515,26 @@ export default function Banco() {
                     setForm((prev) => ({ ...prev, is_shiny: e.target.checked }))
                   }
                 />
-                <Sparkles className="h-4 w-4"/>
+                <Sparkles className="h-4 w-4" />
                 <span>Shiny</span>
               </label>
 
               <div className="pt-2 flex gap-2 justify-end">
-                <Button variant="secondary" className="h-10 px-4 w-auto" onClick={() => setOpen(false)}>
-                    Cancelar
-                </Button>                
-                <Button variant="primary" className="h-10 px-4 w-auto" onClick={save} disabled={saving}>
-                    {saving ? "Salvando" : "Salvar"}
-                </Button>                
+                <Button
+                  variant="secondary"
+                  className="h-10 px-4 w-auto"
+                  onClick={() => setOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="primary"
+                  className="h-10 px-4 w-auto"
+                  onClick={save}
+                  disabled={saving}
+                >
+                  {saving ? "Salvando" : "Salvar"}
+                </Button>
               </div>
             </div>
           </div>
