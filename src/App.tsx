@@ -10,6 +10,7 @@ import Receitas from "./pages/Receitas";
 import Skills from "./pages/Skills";
 import Ingredientes from "./pages/Ingredientes";
 import Banco from "./pages/Banco";
+import Settings from "./pages/Settings";
 
 export default function App() {
   return(
@@ -23,7 +24,8 @@ export default function App() {
       <Route path="/dashboard/receitas" element={<Receitas/>} />
       <Route path="/dashboard/skills" element={<Skills/>} />
       <Route path="/dashboard/ingredientes" element={<Ingredientes/>} />
-      <Route path="/dashboard/banco" element={<Banco/>} />
+      <Route path="/dashboard/banco" element={<RequireAuth><Banco/></RequireAuth>} />
+      <Route path="/dashboard/settings" element={<RequireAuth><Settings/></RequireAuth>} />
       <Route
         path="/dashboard"
         element={
