@@ -10,15 +10,40 @@ import Pagination from "../components/ui/Pagination";
 type PokemonBancoRow = {
   id: number;
   level: number | null;
-  natures: null | { id: number; nome: string | null };
+
   is_shiny: boolean | null;
   gold_seed: string | null;
   hab_level: number | null;
+
+  ingredient_1: number | null;
+  ingredient_2: number | null;
+  ingredient_3: number | null;
+
+  sub_skill1: number | null;
+  sub_skill2: number | null;
+  sub_skill3: number | null;
+  sub_skill4: number | null;
+  sub_skill5: number | null;
+
+  ing1: null | { id: number; nome: string | null };
+  ing2: null | { id: number; nome: string | null };
+  ing3: null | { id: number; nome: string | null };
+
+  ss1: null | { id: number; nome: string | null };
+  ss2: null | { id: number; nome: string | null };
+  ss3: null | { id: number; nome: string | null };
+  ss4: null | { id: number; nome: string | null };
+  ss5: null | { id: number; nome: string | null };
+
+  natures: null | { id: number; nome: string | null };
+
   pokemon_base: {
     id: number;
     pokemon: string;
     dex_num: number;
     specialty: string | null;
+    main_skill: number | null;
+    main_skill_obj?: null | { id: number; nome: string };
   };
 };
 
@@ -29,6 +54,8 @@ type PokemonBaseOption = {
 };
 
 type NatureOption = { id: number; nome: string | null };
+type IngredientOpt = { id: number; nome: string | null };
+type SubSkillOpt = { id: number; nome: string | null };
 
 type FormState = {
   id?: number;
@@ -36,6 +63,16 @@ type FormState = {
   level: number | "";
   nature: number | "";
   is_shiny: boolean;
+
+  ingredient_1: number | "";
+  ingredient_2: number | "";
+  ingredient_3: number | "";
+
+  sub_skill1: number | "";
+  sub_skill2: number | "";
+  sub_skill3: number | "";
+  sub_skill4: number | "";
+  sub_skill5: number | "";
 };
 
 const PAGE_SIZE = 24;
@@ -46,20 +83,66 @@ const baseSelect = `
   is_shiny,
   gold_seed,
   hab_level,
+
+  ingredient_1,
+  ingredient_2,
+  ingredient_3,
+  sub_skill1,
+  sub_skill2,
+  sub_skill3,
+  sub_skill4,
+  sub_skill5,
+  
+  ing1:ingredient_1 (id, nome),
+  ing2:ingredient_2 (id, nome),
+  ing3:ingredient_3 (id, nome),
+
+  ss1:sub_skill1 (id,nome),
+  ss2:sub_skill2 (id,nome),
+  ss3:sub_skill3 (id,nome),
+  ss4:sub_skill4 (id,nome),
+  ss5:sub_skill5 (id,nome),
+  
   pokemon_base:id_base!inner (
     id,
     pokemon,
     dex_num,
     specialty,
     type,
+    main_skill,
+    main_skill_obj:main_skill (id,nome),
     tipo:type (id, tipo, berry)
   ),
   natures:nature (id, nome)
 `;
 
+const emptyForm: FormState = {
+  id_base: "",
+  level: "",
+  nature: "",
+  is_shiny: false,
+
+  ingredient_1: "",
+  ingredient_2: "",
+  ingredient_3: "",
+
+  sub_skill1: "",
+  sub_skill2: "",
+  sub_skill3: "",
+  sub_skill4: "",
+  sub_skill5: "",
+};
+
+const SUB_KEYS = [
+  "sub_skill1",
+  "sub_skill2",
+  "sub_skill3",
+  "sub_skill4",
+  "sub_skill5",
+] as const;
+
 export default function Banco() {
   const { user } = useAuth();
-  const [search, setSearch] = useState("");
   const [loading, setloading] = useState(true);
   const [page, setPage] = useState(1);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -73,6 +156,10 @@ export default function Banco() {
   const [levelMin, setLevelMin] = useState<string>("");
   const [levelMax, setLevelMax] = useState<string>("");
   const [typeId, setTypeId] = useState<string>(""); // id do tipo (tabela tipo)
+  const [ingredientOptions, setIngredientOptions] = useState<IngredientOpt[]>(
+    [],
+  );
+  const [subSkillOptions, setSubSkillOptions] = useState<SubSkillOpt[]>([]);
 
   //modal
   const [open, setOpen] = useState(false);
@@ -84,11 +171,29 @@ export default function Banco() {
     return () => clearTimeout(t);
   }, [name]);
 
+  function isSubTaken(
+    value: number | "",
+    currentKey: (typeof SUB_KEYS)[number],
+  ) {
+    if (value === "") return false;
+    return SUB_KEYS.some((k) => k !== currentKey && form[k] === value);
+  }
+
   const [form, setForm] = useState<FormState>({
     id_base: "",
     level: "",
     nature: "",
     is_shiny: false,
+
+    ingredient_1: "",
+    ingredient_2: "",
+    ingredient_3: "",
+
+    sub_skill1: "",
+    sub_skill2: "",
+    sub_skill3: "",
+    sub_skill4: "",
+    sub_skill5: "",
   });
 
   const title = useMemo(
@@ -108,8 +213,32 @@ export default function Banco() {
     if (!error) setTypeOptions((data ?? []) as any);
   }
 
+  async function loadDropdowns() {
+    const [base, nats] = await Promise.all([
+      supabase
+        .from("pokemon_base")
+        .select("id, pokemon, dex_num")
+        .order("dex_num"),
+      supabase.from("natures").select("id, nome").order("nome"),
+    ]);
+
+    if (!base.error) setPokemonOptions((base.data ?? []) as any);
+    if (!nats.error) setNatureOptions((nats.data ?? []) as any);
+  }
+
+  async function loadRefs() {
+    const [ings, subs] = await Promise.all([
+      supabase.from("ingredientes").select("id,nome").order("nome"),
+      supabase.from("sub_skills").select("id,nome").order("nome"),
+      supabase.from("main_skills").select("id,nome").order("nome"),
+    ]);
+
+    if (!ings.error) setIngredientOptions((ings.data ?? []) as any);
+    if (!subs.error) setSubSkillOptions((subs.data ?? []) as any);
+  }
+
   async function loadAll() {
-    if (!user) return;
+    if (!user?.id) return;
 
     setloading(true);
     setErrorMsg(null);
@@ -173,13 +302,19 @@ export default function Banco() {
 
   useEffect(() => {
     loadTypes();
+    loadRefs();
+    loadDropdowns();
   }, []);
   useEffect(() => {
+    if (!user?.id) return;
     loadAll();
   }, [user?.id, page, dex, debouncedName, levelMin, levelMax, typeId]);
+  useEffect(() => {
+    setPage(1);
+  }, [dex, debouncedName, levelMin, levelMax, typeId]);
 
   function openCreate() {
-    setForm({ id_base: "", level: "", nature: "", is_shiny: false });
+    setForm(emptyForm);
     setOpen(true);
   }
 
@@ -190,12 +325,22 @@ export default function Banco() {
       level: row.level ?? "",
       nature: row.natures?.id ?? "",
       is_shiny: row.is_shiny ?? false,
+
+      ingredient_1: row.ingredient_1 ?? "",
+      ingredient_2: row.ingredient_2 ?? "",
+      ingredient_3: row.ingredient_3 ?? "",
+
+      sub_skill1: row.sub_skill1 ?? "",
+      sub_skill2: row.sub_skill2 ?? "",
+      sub_skill3: row.sub_skill3 ?? "",
+      sub_skill4: row.sub_skill4 ?? "",
+      sub_skill5: row.sub_skill5 ?? "",
     });
     setOpen(true);
   }
 
   async function save() {
-    if (!user) return;
+    if (!user?.id) return;
 
     if (form.id_base === "") {
       setErrorMsg("Selecione um pokémon");
@@ -212,6 +357,19 @@ export default function Banco() {
         level: form.level === "" ? null : Number(form.level),
         nature: form.nature === "" ? null : Number(form.nature),
         is_shiny: form.is_shiny,
+
+        ingredient_1:
+          form.ingredient_1 === "" ? null : Number(form.ingredient_1),
+        ingredient_2:
+          form.ingredient_2 === "" ? null : Number(form.ingredient_2),
+        ingredient_3:
+          form.ingredient_3 === "" ? null : Number(form.ingredient_3),
+
+        sub_skill1: form.sub_skill1 === "" ? null : Number(form.sub_skill1),
+        sub_skill2: form.sub_skill2 === "" ? null : Number(form.sub_skill2),
+        sub_skill3: form.sub_skill3 === "" ? null : Number(form.sub_skill3),
+        sub_skill4: form.sub_skill4 === "" ? null : Number(form.sub_skill4),
+        sub_skill5: form.sub_skill5 === "" ? null : Number(form.sub_skill5),
       };
 
       if (form.id) {
@@ -237,7 +395,7 @@ export default function Banco() {
   }
 
   async function remove(rowId: number) {
-    if (!user) return;
+    if (!user?.id) return;
 
     setErrorMsg(null);
 
@@ -261,7 +419,7 @@ export default function Banco() {
         <div>
           <h2 className="text-lg font-semibold">Banco</h2>
           <p className="text-sm text-zinc-400">
-            Seus pokémon Cadastrados - {loading ? "..." : items.length}
+            Seus pokémon Cadastrados - {loading ? "..." : total}
           </p>
         </div>
 
@@ -466,7 +624,33 @@ export default function Banco() {
                   ))}
                 </select>
               </div>
-
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="flex items-center gap-2 text-sm text-zinc-200">
+                    <input
+                      type="checkbox"
+                      checked={form.is_shiny}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          is_shiny: e.target.checked,
+                        }))
+                      }
+                    />
+                    <Sparkles className="h-4 w-4" />
+                    <span>Shiny</span>
+                  </label>
+                  {form.id_base !== "" && (
+                    <p className="text-xs text-zinc-400">
+                      Main Skill:{" "}
+                      <span className="text-zinc-200">
+                        {items.find((i) => i.id === form.id)?.pokemon_base
+                          ?.main_skill_obj?.nome ?? "-"}
+                      </span>
+                    </p>
+                  )}
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs text-zinc-400">Level</label>
@@ -507,17 +691,75 @@ export default function Banco() {
                 </div>
               </div>
 
-              <label className="flex items-center gap-2 text-sm text-zinc-200">
-                <input
-                  type="checkbox"
-                  checked={form.is_shiny}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, is_shiny: e.target.checked }))
-                  }
-                />
-                <Sparkles className="h-4 w-4" />
-                <span>Shiny</span>
-              </label>
+              <div className="grid grid-cols-3 gap-3">
+                {(
+                  ["ingredient_1", "ingredient_2", "ingredient_3"] as const
+                ).map((key, idx) => (
+                  <div key={key} className="space-y-1">
+                    <label className="text-xs text-zinc-400">
+                      Ingrediente {idx + 1}
+                    </label>
+                    <select
+                      value={form[key]}
+                      onChange={(e) =>
+                        setForm((p) => ({
+                          ...p,
+                          [key]:
+                            e.target.value === "" ? "" : Number(e.target.value),
+                        }))
+                      }
+                      className="w-full h-10 rounded-lg bg-zinc-950/60 border border-zinc-800 px-3 text-sm text-zinc-100 outline-none focus:ring-2 focus:ring-indigo-500/60"
+                    >
+                      <option value="">(Vazio)</option>
+                      {ingredientOptions.map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.nome ?? "-"}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                {(
+                  [
+                    "sub_skill1",
+                    "sub_skill2",
+                    "sub_skill3",
+                    "sub_skill4",
+                    "sub_skill5",
+                  ] as const
+                ).map((key, idx) => (
+                  <div key={key} className="space-y-1">
+                    <label className="text-xs text-zinc-400">
+                      Sub_Skills {idx + 1}
+                    </label>
+                    <select
+                      value={form[key]}
+                      onChange={(e) =>
+                      {
+                        const v = e.target.value === "" ? "" : Number(e.target.value);
+
+                        if (v !== "" && isSubTaken(v, key)) return;
+
+                        setForm((p) => ({...p, [ key]: v}));
+                      }}
+                      className="w-full h-10 rounded-lg bg-zinc-950/60 border border-zinc-800 px-3 text-sm text-zinc-100 outline-none focus:ring-2 focus:ring-indigo-500/60"
+                    >
+                      <option value="">(Vazio)</option>
+                      {subSkillOptions.map((o) => {
+                        const disabled = isSubTaken(o.id, key);
+                        return (
+                          <option key={o.id} value={o.id} disabled={disabled}>
+                            {o.nome ?? "-"}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                ))}
+              </div>
 
               <div className="pt-2 flex gap-2 justify-end">
                 <Button
