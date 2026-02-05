@@ -13,7 +13,7 @@ import {
   LeafyGreen,
   Package2,
   Menu,
-  LogOut
+  LogOut,
 } from "lucide-react";
 
 type DashboardLayoutProps = {
@@ -94,7 +94,7 @@ function SidebarContent({
             `${linkBase} ${isActive ? linkActive : linkInactive}`
           }
         >
-          <LeafyGreen  className="h-4 w-4" />
+          <LeafyGreen className="h-4 w-4" />
           <span className={labelClass}>Ingredientes</span>
         </NavLink>
         <NavLink
@@ -143,17 +143,19 @@ export default function DashboardLayout({
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const [collapsed, setCollapsed] = useState(false);
-
-  const desktopSidebarWidth = collapsed ? "lg:w-20" : "lg:w-64";
+  const expandedW = "lg:w-64";
+  const collapsedW = "lg:w-20";
+  const desktopSidebarWidth = collapsed ? collapsedW : expandedW;
   const desktopPaddingLeft = collapsed ? "lg:pl-20" : "lg:pl-64";
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-10 overflow-x-hidden">
       {/* Mobile Sidebar */}
       {mobileOpen && (
-        <div
+        <button
           className="fixed inset-0 z-40 bg-black/60 lg:hidden"
           onClick={() => setMobileOpen(false)}
+          arial-label="Fechar menu"
         />
       )}
 

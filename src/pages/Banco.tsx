@@ -6,6 +6,7 @@ import Button from "../components/ui/Button";
 import { getPokemonImageUrl, RECIPE_PLACEHOLDER } from "../lib/urlImages";
 import { Plus, Sparkles, X } from "lucide-react";
 import Pagination from "../components/ui/Pagination";
+import { NumberStepper } from "../components/ui/InputIncrement";
 
 type PokemonBancoRow = {
   id: number;
@@ -63,6 +64,7 @@ type FormState = {
   level: number | "";
   nature: number | "";
   is_shiny: boolean;
+  hab_level: number | "";
 
   ingredient_1: number | "";
   ingredient_2: number | "";
@@ -184,6 +186,7 @@ export default function Banco() {
     level: "",
     nature: "",
     is_shiny: false,
+    hab_level: "",
 
     ingredient_1: "",
     ingredient_2: "",
@@ -325,6 +328,7 @@ export default function Banco() {
       level: row.level ?? "",
       nature: row.natures?.id ?? "",
       is_shiny: row.is_shiny ?? false,
+      hab_level: row.hab_level ?? "",
 
       ingredient_1: row.ingredient_1 ?? "",
       ingredient_2: row.ingredient_2 ?? "",
@@ -357,6 +361,7 @@ export default function Banco() {
         level: form.level === "" ? null : Number(form.level),
         nature: form.nature === "" ? null : Number(form.nature),
         is_shiny: form.is_shiny,
+        hab_level: form.hab_level,
 
         ingredient_1:
           form.ingredient_1 === "" ? null : Number(form.ingredient_1),
@@ -624,7 +629,7 @@ export default function Banco() {
                   ))}
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4 items-start">
                 <div className="space-y-1">
                   <label className="flex items-center gap-2 text-sm text-zinc-200">
                     <input
@@ -649,6 +654,19 @@ export default function Banco() {
                       </span>
                     </p>
                   )}
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm text-zinc-400">
+                    Main Skill Level
+                  </label>
+                  <NumberStepper
+                    value={form.hab_level}
+                    min={1}
+                    max={9}
+                    step={1}
+                    placeholder="Lv"
+                    onChange={(v) => setForm((p) => ({ ...p, hab_level: v }))}
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -737,13 +755,13 @@ export default function Banco() {
                     </label>
                     <select
                       value={form[key]}
-                      onChange={(e) =>
-                      {
-                        const v = e.target.value === "" ? "" : Number(e.target.value);
+                      onChange={(e) => {
+                        const v =
+                          e.target.value === "" ? "" : Number(e.target.value);
 
                         if (v !== "" && isSubTaken(v, key)) return;
 
-                        setForm((p) => ({...p, [ key]: v}));
+                        setForm((p) => ({ ...p, [key]: v }));
                       }}
                       className="w-full h-10 rounded-lg bg-zinc-950/60 border border-zinc-800 px-3 text-sm text-zinc-100 outline-none focus:ring-2 focus:ring-indigo-500/60"
                     >
