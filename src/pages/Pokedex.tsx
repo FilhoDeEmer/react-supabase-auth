@@ -2,8 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "../layout/DashboardLayout";
 import { supabase } from "../lib/supabase";
 import Button from "../components/ui/Button";
-import { getPokemonImageUrl, RECIPE_PLACEHOLDER } from "../lib/urlImages";
+import {
+  getIngredientImageUrl,
+  getPokemonImageUrl,
+  RECIPE_PLACEHOLDER,
+} from "../lib/urlImages";
 import Pagination from "../components/ui/Pagination";
+import { X } from "lucide-react";
 
 type PokemonBaseRow = {
   id: number;
@@ -11,9 +16,20 @@ type PokemonBaseRow = {
   dex_num: number;
   specialty: string | null;
   sleep_type: string | null;
+  carry_base: string | null;
+  ingredientes: string | null;
+  pokemon_ingrediente?: {
+    ingredientes: { id: number; nome: string | null } | null;
+  }[];
   tipo: null | {
     tipo: string | null;
     berry: string | null;
+  };
+  frequencia: string | null;
+  main_skill: null | {
+    id: number;
+    nome: string;
+    descricao: string;
   };
 };
 
@@ -25,9 +41,21 @@ export default function Pokedex() {
 
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<PokemonBaseRow | null>(null);
 
   const [items, setItems] = useState<PokemonBaseRow[]>([]);
   const [total, setTotal] = useState(0);
+
+  const ingList = useMemo(() => {
+    return (
+      selected?.pokemon_ingrediente
+        ?.map((x) => x.ingredientes)
+        .filter((ing): ing is {id: number; nome: string | null } =>
+          !!ing && typeof ing.id === "number"
+    ) ?? []
+  );
+  }, [selected]);
 
   const totalPages = useMemo(() => {
     return Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -45,14 +73,20 @@ export default function Pokedex() {
       let q = supabase
         .from("pokemon_base")
         .select(
-          `
-            id,
+          ` id,
             pokemon,
             dex_num,
             specialty,
             sleep_type,
-            tipo:type ( tipo, berry )
-          `,
+            carry_base,
+            frequencia,
+            ingredientes,
+            tipo:type (tipo, berry),
+            main_skill:main_skills (id, nome, descricao),
+            pokemon_ingrediente:pokemon_ingrediente (
+              ingredientes:id_ingrediente (id, nome)
+            )
+            `,
           { count: "exact" },
         )
         .order("dex_num", { ascending: true })
@@ -98,6 +132,15 @@ export default function Pokedex() {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
+
+  function openInfo(pokemon: PokemonBaseRow) {
+    setSelected(pokemon);
+    setOpen(true);
+  }
+  function closeInfo() {
+    setOpen(false);
+    setSelected(null);
+  }
 
   return (
     <DashboardLayout title="Pokédex">
@@ -173,7 +216,7 @@ export default function Pokedex() {
                     variant="secondary"
                     size="sm"
                     className="w-full"
-                    onClick={() => alert(`Abrir detalhes de ${p.pokemon}`)}
+                    onClick={() => openInfo(p)}
                   >
                     Ver detalhes
                   </Button>
@@ -192,6 +235,97 @@ export default function Pokedex() {
         totalItems={total}
         pageSize={PAGE_SIZE}
       />
+
+      {/*Modal info */}
+      {open && selected && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/60" onClick={closeInfo} />
+          <div className="absolute left-1/2 top-1/2 w-[min(520px,92vw)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-lg font-semibold">
+                  #{selected.dex_num} - {selected.pokemon}
+                </p>
+                <p className="text-sm text-zinc-400">
+                  {selected.tipo?.tipo ?? "Sem tipo"} •{" "}
+                  {selected.specialty ?? "-"}
+                </p>
+              </div>
+
+              <button
+                className="text-zinc-400 hover:text-white"
+                onClick={closeInfo}
+                type="button"
+              >
+                {" "}
+                <X className="h-4 w-4"></X>
+              </button>
+            </div>
+
+            <div className="mt-4 grid grid-cols-[70%_30%] gap-4 items-start">
+              <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-3 space-y-2">
+                <p className="text-xs text-zinc-400">Sleep type</p>
+                <p className="text-xs text-zinc-100">
+                  {selected.sleep_type ?? "-"}
+                </p>
+
+                <p className="text-xs text-zinc-400">Main Skill</p>
+                <p className="text-xs text-zinc-100">
+                  {selected.main_skill?.nome ?? "-"}
+                </p>
+                <p className="text-xs text-zinc-100">
+                  {selected.main_skill?.descricao ?? "-"}
+                </p>
+
+                <p className="text-xs text-zinc-400">Ingredientes</p>
+                {ingList.length ? (
+                  <div className="flex flex-wrap gap-2">
+                    {ingList.map((ing) => (
+                      <div
+                        key={ing.id}
+                        className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950/40 px-2 py-1"
+                      >
+                        <img
+                          src={getIngredientImageUrl(ing.nome)}
+                          alt={ing.nome ?? `Ingrediente ${ing.id}`}
+                          className="h-5 w-5 object-contain"
+                          onError={(e) =>
+                            (e.currentTarget.src = RECIPE_PLACEHOLDER)
+                          }
+                        />
+                        <span className="text-xs text-zinc-100">
+                          {ing.nome ?? "-"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-zinc-100">-</p>
+                )}
+
+                <p className="text-xs text-zinc-400">Frequência de ajuda</p>
+                <p className="text-xs text-zinc-100">
+                  {selected.frequencia ?? "-"}
+                </p>
+
+                <p className="text-xs text-zinc-400">Carry base</p>
+                <p className="text-xs text-zinc-100">
+                  {selected.carry_base ?? "-"}
+                </p>
+              </div>
+
+              <div className="flex justify-center">
+                <img
+                  src={getPokemonImageUrl(selected.dex_num)}
+                  alt={selected.pokemon}
+                  className="h-40 w-40 object-contain"
+                  onError={(e) => (e.currentTarget.src = RECIPE_PLACEHOLDER)}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }
