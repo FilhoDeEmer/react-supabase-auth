@@ -1,4 +1,5 @@
 type NumberStepperProps = {
+  defaultValue?: number;
   value: number | "";
   onChange: (v: number | "") => void;
   min?: number;
@@ -8,6 +9,7 @@ type NumberStepperProps = {
 };
 
 export function NumberStepper({
+  defaultValue,
   value,
   onChange,
   min = 1,
@@ -22,6 +24,7 @@ export function NumberStepper({
   return (
     <div className="flex h-10 w-20 items-center rounded-lg border border-zinc-800 bg-zinc-950/60 overflow-hidden">
       <input
+      defaultValue={defaultValue}
         type="number"
         value={value}
         min={min}

@@ -4,15 +4,18 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../auth/AuthProvider";
 import Button from "../components/ui/Button";
 import { getPokemonImageUrl, RECIPE_PLACEHOLDER } from "../lib/urlImages";
-import { Plus, Sparkles, X } from "lucide-react";
+import { Plus, Sparkles, Star, X } from "lucide-react";
 import Pagination from "../components/ui/Pagination";
 import { NumberStepper } from "../components/ui/InputIncrement";
+import Popover from "../components/ui/Popover";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
 
 type PokemonBancoRow = {
   id: number;
   level: number | null;
 
   is_shiny: boolean | null;
+  is_favorite: boolean | null;
   gold_seed: string | null;
   hab_level: number | null;
 
@@ -36,7 +39,12 @@ type PokemonBancoRow = {
   ss4: null | { id: number; nome: string | null };
   ss5: null | { id: number; nome: string | null };
 
-  natures: null | { id: number; nome: string | null };
+  natures: null | {
+    id: number;
+    nome: string | null;
+    postivo: string | null;
+    negativo: string | null;
+  };
 
   pokemon_base: {
     id: number;
@@ -44,7 +52,7 @@ type PokemonBancoRow = {
     dex_num: number;
     specialty: string | null;
     main_skill: number | null;
-    main_skill_obj?: null | { id: number; nome: string };
+    main_skill_obj?: null | { id: number; nome: string; descricao: string };
   };
 };
 
@@ -54,7 +62,12 @@ type PokemonBaseOption = {
   dex_num: number | null;
 };
 
-type NatureOption = { id: number; nome: string | null };
+type NatureOption = {
+  id: number;
+  nome: string | null;
+  positivo: string | null;
+  negativo: string | null;
+};
 type IngredientOpt = { id: number; nome: string | null };
 type SubSkillOpt = { id: number; nome: string | null };
 
@@ -65,6 +78,7 @@ type FormState = {
   nature: number | "";
   is_shiny: boolean;
   hab_level: number | "";
+  is_favorite?: boolean;
 
   ingredient_1: number | "";
   ingredient_2: number | "";
@@ -85,6 +99,7 @@ const baseSelect = `
   is_shiny,
   gold_seed,
   hab_level,
+  is_favorite,
 
   ingredient_1,
   ingredient_2,
@@ -112,10 +127,10 @@ const baseSelect = `
     specialty,
     type,
     main_skill,
-    main_skill_obj:main_skill (id,nome),
+    main_skill_obj:main_skill (id,nome, descricao),
     tipo:type (id, tipo, berry)
   ),
-  natures:nature (id, nome)
+  natures:nature (id, nome, positivo, negativo)
 `;
 
 const emptyForm: FormState = {
@@ -123,6 +138,8 @@ const emptyForm: FormState = {
   level: "",
   nature: "",
   is_shiny: false,
+  is_favorite: false,
+  hab_level: "",
 
   ingredient_1: "",
   ingredient_2: "",
@@ -152,17 +169,18 @@ export default function Banco() {
   const [pokemonOptions, setPokemonOptions] = useState<PokemonBaseOption[]>([]);
   const [natureOption, setNatureOptions] = useState<NatureOption[]>([]);
   const [total, setTotal] = useState(0);
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
 
   const [dex, setDex] = useState<string>("");
   const [name, setName] = useState<string>("");
-  const [levelMin, setLevelMin] = useState<string>("");
-  const [levelMax, setLevelMax] = useState<string>("");
+  const [sortBy, setSortBy] = useState<string>("");
   const [typeId, setTypeId] = useState<string>(""); // id do tipo (tabela tipo)
   const [ingredientOptions, setIngredientOptions] = useState<IngredientOpt[]>(
     [],
   );
   const [subSkillOptions, setSubSkillOptions] = useState<SubSkillOpt[]>([]);
 
+  const [confirmId, setConfirmId] = useState<number | null>(null);
   //modal
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -204,6 +222,11 @@ export default function Banco() {
     [form.id],
   );
 
+  const pokemonToDelete = useMemo(
+    () => items.find((x) => x.id === confirmId) ?? null,
+    [items, confirmId],
+  );
+
   type TipoOption = { id: number; tipo: string | null };
   const [typeOptions, setTypeOptions] = useState<TipoOption[]>([]);
 
@@ -222,7 +245,10 @@ export default function Banco() {
         .from("pokemon_base")
         .select("id, pokemon, dex_num")
         .order("dex_num"),
-      supabase.from("natures").select("id, nome").order("nome"),
+      supabase
+        .from("natures")
+        .select("id, nome, positivo, negativo")
+        .order("nome"),
     ]);
 
     if (!base.error) setPokemonOptions((base.data ?? []) as any);
@@ -266,24 +292,25 @@ export default function Banco() {
         q = q.ilike("pokemon_base.pokemon", `%${debouncedName}%`);
       }
 
-      if (levelMin.trim()) {
-        const min = Number(levelMin);
-        if (!Number.isNaN(min)) q = q.gte("level", min);
+      if (sortBy === "level_asc") {
+        q = q.order("level", { ascending: true });
+      } else if (sortBy === "level_desc") {
+        q = q.order("level", { ascending: false });
       }
-      if (levelMax.trim()) {
-        const max = Number(levelMax);
-        if (!Number.isNaN(max)) q = q.lte("level", max);
+
+      if (onlyFavorites) {
+        q = q.eq("is_favorite", true);
       }
 
       if (typeId) {
         q = q.eq("pokemon_base.type", Number(typeId));
       }
 
-      q = q.order("dex_num", {
-        foreignTable: "pokemon_base",
-        ascending: true,
-        nullsFirst: false,
-      });
+      q = q
+        .order("pokemon_base(dex_num)", {
+          ascending: true,
+        })
+        .order("level", { ascending: true });
 
       q = q.range(from, to);
 
@@ -311,10 +338,10 @@ export default function Banco() {
   useEffect(() => {
     if (!user?.id) return;
     loadAll();
-  }, [user?.id, page, dex, debouncedName, levelMin, levelMax, typeId]);
+  }, [user?.id, page, dex, debouncedName, sortBy,onlyFavorites, typeId]);
   useEffect(() => {
     setPage(1);
-  }, [dex, debouncedName, levelMin, levelMax, typeId]);
+  }, [dex, debouncedName, sortBy, onlyFavorites, typeId]);
 
   function openCreate() {
     setForm(emptyForm);
@@ -358,10 +385,10 @@ export default function Banco() {
       const payload = {
         user_id: user.id,
         id_base: Number(form.id_base),
-        level: form.level === "" ? null : Number(form.level),
+        level: form.level === "" ? 1 : Number(form.level),
         nature: form.nature === "" ? null : Number(form.nature),
         is_shiny: form.is_shiny,
-        hab_level: form.hab_level,
+        hab_level: form.hab_level === "" ? 1 : Number(form.hab_level),
 
         ingredient_1:
           form.ingredient_1 === "" ? null : Number(form.ingredient_1),
@@ -403,6 +430,7 @@ export default function Banco() {
     if (!user?.id) return;
 
     setErrorMsg(null);
+    setloading(true);
 
     try {
       const { error } = await supabase
@@ -411,11 +439,29 @@ export default function Banco() {
         .eq("id", rowId)
         .eq("user_id", user.id);
 
+      setloading(false);
+
       if (error) throw error;
       await loadAll();
     } catch (e: any) {
       setErrorMsg(e?.message ?? "Falha ao excluir");
+    } finally {
+      setloading(false);
+      setConfirmId(null);
     }
+  }
+
+  async function toggleFavorite(row: PokemonBancoRow) {
+    if (!user?.id) return;
+
+    const { error } = await supabase
+      .from("pokemon_banco")
+      .update({ is_favorite: !row.is_favorite })
+      .eq("id", row.id)
+      .eq("user_id", user.id);
+
+    if (error) throw error;
+    await loadAll();
   }
 
   return (
@@ -465,26 +511,17 @@ export default function Banco() {
           placeholder="Nome"
           className="h-10 rounded-lg bg-zinc-950/60 border border-zinc-800 px-3 text-sm text-zinc-100"
         />
-
-        <input
-          value={levelMin}
+        <select
+          value={sortBy}
           onChange={(e) => {
-            setLevelMin(e.target.value);
-            setPage(1);
+            setSortBy(e.target.value);
           }}
-          placeholder="Lv mín"
           className="h-10 rounded-lg bg-zinc-950/60 border border-zinc-800 px-3 text-sm text-zinc-100"
-        />
-
-        <input
-          value={levelMax}
-          onChange={(e) => {
-            setLevelMax(e.target.value);
-            setPage(1);
-          }}
-          placeholder="Lv máx"
-          className="h-10 rounded-lg bg-zinc-950/60 border border-zinc-800 px-3 text-sm text-zinc-100"
-        />
+        >
+          <option value="">Ordenar por level?</option>
+          <option value="level_desc">Level ↑ (maior)</option>
+          <option value="level_acs">Level ↓ (menor)</option>
+        </select>
 
         <select
           value={typeId}
@@ -501,6 +538,17 @@ export default function Banco() {
             </option>
           ))}
         </select>
+
+        <Button
+          variant={onlyFavorites ? "primary" : "secondary"}
+          className="h-10 w-full sm:w-auto"
+          onClick={() => {
+            setOnlyFavorites((v) => !v);
+            setPage(1);
+          }}
+        >
+          ⭐ {onlyFavorites ? "Só favoritos" : "Todos"}
+        </Button>
       </div>
 
       {errorMsg && (
@@ -552,7 +600,21 @@ export default function Banco() {
                       </div>
                     )}
                   </div>
-
+                  {p.is_favorite !== undefined && (
+                    <button
+                      className="mt-2 text-yellow-400 hover:opacity-80 flex items-center gap-1 text-sm"
+                      onClick={() => toggleFavorite(p)}
+                    >
+                      <Star
+                        className={
+                          p.is_favorite
+                            ? "fill-yellow-400 text-yellow-400"
+                            : "text-zinc-400"
+                        }
+                      />
+                      {p.is_favorite ? "Favorito" : "Não favorito"}
+                    </button>
+                  )}
                   <div className="mt-4 grid grid-cols-2 gap-2">
                     <Button
                       variant="secondary"
@@ -564,7 +626,7 @@ export default function Banco() {
                     <Button
                       variant="ghost"
                       className="h-10 w-full hover:bg-red-600/20"
-                      onClick={() => remove(p.id)}
+                      onClick={() => setConfirmId(p.id)}
                     >
                       Excluir
                     </Button>
@@ -575,7 +637,19 @@ export default function Banco() {
           </div>
         )}
       </div>
-
+      <ConfirmDialog
+        open={confirmId !== null}
+        title="Excluir Pokémon"
+        description={`Tem certeza que deseja excluir ${pokemonToDelete?.pokemon_base?.pokemon ?? "este Pokémon"}?`}
+        confirmText="Excluir"
+        danger
+        onCancel={() => setConfirmId(null)}
+        onConfirm={() => {
+          if (confirmId == null) return;
+          remove(confirmId);
+          setConfirmId(null);
+        }}
+      />
       <Pagination
         page={page}
         totalPages={totalPages}
@@ -648,10 +722,23 @@ export default function Banco() {
                   {form.id_base !== "" && (
                     <p className="text-xs text-zinc-400">
                       Main Skill:{" "}
-                      <span className="text-zinc-200">
-                        {items.find((i) => i.id === form.id)?.pokemon_base
-                          ?.main_skill_obj?.nome ?? "-"}
-                      </span>
+                      <Popover
+                        trigger={
+                          items.find((i) => i.id === form.id)?.pokemon_base
+                            ?.main_skill_obj?.nome ?? "-"
+                        }
+                      >
+                        <div className="space-y-2">
+                          <p className="text-sm font-semibold text-zinc-50">
+                            {items.find((i) => i.id === form.id)?.pokemon_base
+                              ?.main_skill_obj?.nome ?? "-"}
+                          </p>
+                          <p className="text-zinc-300">
+                            {items.find((i) => i.id === form.id)?.pokemon_base
+                              ?.main_skill_obj?.descricao ?? "Sem descrição"}
+                          </p>
+                        </div>
+                      </Popover>
                     </p>
                   )}
                 </div>
@@ -660,7 +747,7 @@ export default function Banco() {
                     Main Skill Level
                   </label>
                   <NumberStepper
-                    value={form.hab_level}
+                    value={form.hab_level === "" ? 1 : form.hab_level}
                     min={1}
                     max={9}
                     step={1}
@@ -673,7 +760,7 @@ export default function Banco() {
                 <div className="space-y-1">
                   <label className="text-xs text-zinc-400">Level</label>
                   <input
-                    value={form.level}
+                    value={form.level === "" ? 1 : form.level}
                     onChange={(e) =>
                       setForm((prev) => ({
                         ...prev,
@@ -702,7 +789,8 @@ export default function Banco() {
                     <option value="">(Opcional)</option>
                     {natureOption.map((n) => (
                       <option key={n.id} value={n.id}>
-                        {n.nome ?? "-"}
+                        {n.nome ?? "-"} {n.positivo ? `(↑ ${n.positivo})` : ""}{" "}
+                        {n.negativo ? `(↓ ${n.negativo})` : ""}
                       </option>
                     ))}
                   </select>
