@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "../layout/DashboardLayout";
 import { supabase } from "../lib/supabase";

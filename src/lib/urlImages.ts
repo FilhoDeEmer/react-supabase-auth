@@ -9,9 +9,6 @@
  * https://www.serebii.net/pokemonsleep/pokemon/sleep/1.png
  * https://www.serebii.net/pokemonsleep/items/bulbasaurcandy.png
  */
-
-import { sl } from "zod/v4/locales";
-
 export const RECIPE_PLACEHOLDER = "/recipe-placeholder.png";
 
 export function slugifyName(name: string) {

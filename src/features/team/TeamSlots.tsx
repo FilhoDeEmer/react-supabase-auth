@@ -18,13 +18,14 @@ type TeamRow = {
       specialty: string | null;
     };
     natures: null | { nome: string | null };
-    is_shiny: boolean | null;
+    is_shiny: boolean;
   };
 };
 
 type PokemonBancoOption = {
   id: number;
   level: number | null;
+  is_shiny: boolean;
   pokemon_base: { pokemon: string; dex_num: number | null } | null;
 };
 
@@ -47,7 +48,7 @@ export default function TeamSlots() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   async function loadAll() {
-    if (!user) return;
+    if (!user?.id) return;
 
     setErrorMsg(null);
     setLoading(true);
@@ -58,7 +59,7 @@ export default function TeamSlots() {
         .from("user_team_slots")
         .select(
           `
-                    slot,
+          slot,
                     pokemon_banco:pokemon_banco_id (
                         id,
                         level,
@@ -85,6 +86,7 @@ export default function TeamSlots() {
         .select(
           `
                         id,
+                        is_shiny,
                         level,
                         pokemon_base: id_base (pokemon,dex_num)    
                         `,
@@ -116,6 +118,7 @@ export default function TeamSlots() {
   }
 
   useEffect(() => {
+    if (!user?.id) return;
     loadAll();
   }, [user?.id]);
 
@@ -126,7 +129,7 @@ export default function TeamSlots() {
   }, [options]);
 
   async function onSave(slot: number) {
-    if (!user) return;
+    if (!user?.id) return;
 
     setErrorMsg(null);
     setSavingSlot(slot);
@@ -196,11 +199,19 @@ export default function TeamSlots() {
               : (optionsById.get(Number(selected)) ?? null);
 
           const displayName =
+            selectedObj?.pokemon_base?.pokemon ??
             current?.pokemon_base?.pokemon ??
             selectedObj?.pokemon_base?.pokemon ??
             "Vazio";
 
-          const displayLevel = current?.level ?? selectedObj?.level ?? null;
+          const displayLevel = selectedObj?.level ?? current?.level ?? null;
+
+          const dexNum =
+            selectedObj?.pokemon_base?.dex_num ??
+            current?.pokemon_base?.dex_num ??
+            null;
+
+          const isShiny = selectedObj?.is_shiny ?? current?.is_shiny ?? false;
 
           return (
             <div
@@ -228,11 +239,9 @@ export default function TeamSlots() {
 
               <div>
                 <p className="font-semibold">{displayName}</p>
-                {current?.pokemon_base?.dex_num ? (
+                {dexNum ? (
                   <img
-                    src={getPokemonImageUrl(
-                      current.pokemon_base.dex_num, current.is_shiny
-                    )}
+                    src={getPokemonImageUrl(dexNum, isShiny)}
                     alt={r.pokemon_banco?.pokemon_base.pokemon}
                     className="h-24 w-24 object-contain items-center"
                     onError={(e) => (e.currentTarget.src = RECIPE_PLACEHOLDER)}
@@ -255,33 +264,57 @@ export default function TeamSlots() {
                 </label>
                 <select
                   value={selected}
-                  onChange={(e) =>
-                    setSelectedBySlot((prev) => ({
-                      ...prev,
-                      [r.slot]:
-                        e.target.value === "" ? "" : Number(e.target.value),
-                    }))
-                  }
+                  onChange={async (e) => {
+                    const v =
+                      e.target.value === "" ? "" : Number(e.target.value);
+
+                    setSelectedBySlot((prev) => ({ ...prev, [r.slot]: v }));
+
+                    try {
+                      setErrorMsg(null);
+                      setSavingSlot(r.slot);
+
+                      await setPokemonInSlot(
+                        r.slot,
+                        v === "" ? null : Number(v),
+                      );
+
+                      setRows((prev) =>
+                        prev.map((row) =>
+                          row.slot === r.slot
+                            ? {
+                                ...row,
+                                pokemon_banco:
+                                  v === ""
+                                    ? null
+                                    : ((optionsById.get(Number(v)) as any) ??
+                                      null),
+                              }
+                            : row,
+                        ),
+                      );
+                    } catch (err: any) {
+                      setErrorMsg(err?.message ?? "Falha ao atualizar slot.");
+                      setSelectedBySlot((prev) => ({
+                        ...prev,
+                        [r.slot]: r.pokemon_banco?.id ?? "",
+                      }));
+                    } finally {
+                      setSavingSlot(null);
+                    }
+                  }}
                   className="w-full h-10 rounded-lg bg-zinc-950/60 border border-zinc-800 px-3 text-sm text-zinc-100 outline-none focus:ring-2 focus:ring-indigo-500/60"
                 >
                   <option value="">(Vazio)</option>
                   {options.map((o) => (
                     <option key={o.id} value={o.id}>
-                      {o.pokemon_base?.pokemon ?? "?"} - Lv {o.level ?? 0}
+                      {o.pokemon_base?.pokemon ?? "?"} - Lv {o.level ?? 0}{" "}
+                      {o.is_shiny ? "✨" : ""}
                     </option>
                   ))}
                 </select>
 
-                <div className="pt-2">
-                  <Button
-                    variant="primary"
-                    className="h-10 w-full"
-                    onClick={() => onSave(r.slot)}
-                    disabled={savingSlot === r.slot}
-                  >
-                    {savingSlot === r.slot ? "Salvando..." : "Salvar"}
-                  </Button>
-                </div>
+                <div className="pt-2"></div>
               </div>
             </div>
           );
