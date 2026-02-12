@@ -6,6 +6,7 @@ import Button from "../../components/ui/Button";
 import { clearSlot, ensureTeamSlots, setPokemonInSlot } from "./teamService";
 import { X } from "lucide-react";
 import { getPokemonImageUrl, RECIPE_PLACEHOLDER } from "../../lib/urlImages";
+import TeamRecommendation from "../../pages/TeamRecommendation";
 
 type TeamRow = {
   slot: number;
@@ -320,6 +321,7 @@ export default function TeamSlots() {
           );
         })}
       </div>
+      <TeamRecommendation />
     </div>
   );
 }

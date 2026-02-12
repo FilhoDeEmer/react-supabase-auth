@@ -57,6 +57,7 @@ function SidebarContent({
           <Home className="h-4 w-4" />
           <span className={labelClass}>Home</span>
         </NavLink>
+       
         <NavLink
           to="/dashboard/banco"
           onClick={onNavigate}
