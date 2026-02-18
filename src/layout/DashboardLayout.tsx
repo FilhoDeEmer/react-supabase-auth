@@ -154,6 +154,7 @@ export default function DashboardLayout({
       {/* Mobile Sidebar */}
       {mobileOpen && (
         <button
+          title="fechar menu"
           className="fixed inset-0 z-40 bg-black/60 lg:hidden"
           onClick={() => setMobileOpen(false)}
           arial-label="Fechar menu"

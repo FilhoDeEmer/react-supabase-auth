@@ -264,6 +264,7 @@ export default function TeamSlots() {
                   Escolher Pokémon
                 </label>
                 <select
+                  title="set pokemon"
                   value={selected}
                   onChange={async (e) => {
                     const v =

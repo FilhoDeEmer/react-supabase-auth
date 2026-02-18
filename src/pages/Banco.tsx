@@ -340,7 +340,7 @@ export default function Banco() {
   useEffect(() => {
     if (!user?.id) return;
     loadAll();
-  }, [user?.id, page, dex, debouncedName, sortBy,onlyFavorites, typeId]);
+  }, [user?.id, page, dex, debouncedName, sortBy, onlyFavorites, typeId]);
   useEffect(() => {
     setPage(1);
   }, [dex, debouncedName, sortBy, onlyFavorites, typeId]);
@@ -514,6 +514,7 @@ export default function Banco() {
           className="h-10 rounded-lg bg-zinc-950/60 border border-zinc-800 px-3 text-sm text-zinc-100"
         />
         <select
+          title="nivel"
           value={sortBy}
           onChange={(e) => {
             setSortBy(e.target.value);
@@ -526,6 +527,7 @@ export default function Banco() {
         </select>
 
         <select
+          title="Tipo"
           value={typeId}
           onChange={(e) => {
             setTypeId(e.target.value);
@@ -687,6 +689,7 @@ export default function Banco() {
               <div className="space-y-1">
                 <label className="text-xs text-zinc-400">Pokémon</label>
                 <select
+                  title="pokemon"
                   value={form.id_base}
                   onChange={(e) =>
                     setForm((prev) => ({
@@ -762,7 +765,7 @@ export default function Banco() {
                 <div className="space-y-1">
                   <label className="text-xs text-zinc-400">Level</label>
                   <input
-                    value={form.level === "" ? 1 : form.level}
+                    value={form.level}
                     onChange={(e) =>
                       setForm((prev) => ({
                         ...prev,
@@ -778,6 +781,7 @@ export default function Banco() {
                 <div className="space-y-1">
                   <label className="text-xs text-zinc-400">Nature</label>
                   <select
+                    title="nature"
                     value={form.nature}
                     onChange={(e) =>
                       setForm((prev) => ({
@@ -808,6 +812,7 @@ export default function Banco() {
                       Ingrediente {idx + 1}
                     </label>
                     <select
+                      title="ingredientes"
                       value={form[key]}
                       onChange={(e) =>
                         setForm((p) => ({
@@ -844,6 +849,7 @@ export default function Banco() {
                       Sub_Skills {idx + 1}
                     </label>
                     <select
+                      title="sub_skills"
                       value={form[key]}
                       onChange={(e) => {
                         const v =

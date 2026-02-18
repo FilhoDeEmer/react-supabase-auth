@@ -25,7 +25,7 @@ type PokemonBaseRow = {
     tipo: string | null;
     berry: string | null;
   };
-  frequencia: string | null;
+  frequency: string | null;
   main_skill: null | {
     id: number;
     nome: string;
@@ -79,7 +79,7 @@ export default function Pokedex() {
             specialty,
             sleep_type,
             carry_base,
-            frequencia,
+            frequency,
             ingredientes,
             tipo:type (tipo, berry),
             main_skill:main_skills (id, nome, descricao),
@@ -305,7 +305,7 @@ export default function Pokedex() {
 
                 <p className="text-xs text-zinc-400">Frequência de ajuda</p>
                 <p className="text-xs text-zinc-100">
-                  {selected.frequencia ?? "-"}
+                  {selected.frequency ?? "-"}
                 </p>
 
                 <p className="text-xs text-zinc-400">Carry base</p>

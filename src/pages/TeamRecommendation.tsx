@@ -12,8 +12,6 @@ type IlhaOption = {
   bonus: number | null;
 };
 
-type Goal = "balanced" | "berries" | "cooking" | "support";
-
 type RecommendationRow = {
   pokemon_banco_id: number;
   pokemon: string;
@@ -23,8 +21,15 @@ type RecommendationRow = {
   tipo: string | null;
   tipo_berry: string | null;
   main_skill_nome: string | null;
+
   island_berry_match: boolean;
-  score: number;
+  island_bonus_percent: number | null;
+
+  helps_per_day_eff: number | null;
+  berry_strength_day: number | null;
+  skill_strength_day: number | null;
+  total_strength_day: number | null;
+
   reasons: string | null;
 };
 
@@ -33,11 +38,13 @@ export default function TeamRecommendation() {
 
   const [ilhas, setIlhas] = useState<IlhaOption[]>([]);
   const [ilhaId, setIlhaId] = useState<number | "">("");
-  const [goal, setGoal] = useState<Goal>("balanced");
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [reco, setReco] = useState<RecommendationRow[]>([]);
+
+  const [islandBonusInput, setIslandBonusInput] = useState<string>("");
+  const [savingBonus, setSavingBonus] = useState(false);
 
   const ilhaSelected = useMemo(
     () => ilhas.find((i) => i.id === ilhaId) ?? null,
@@ -68,10 +75,9 @@ export default function TeamRecommendation() {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.rpc("recommend_team", {
+      const { data, error } = await supabase.rpc("recommend_team_fast", {
         p_user_id: user.id,
         p_ilha_id: Number(ilhaId),
-        p_goal: goal,
       });
 
       if (error) throw error;
@@ -91,9 +97,83 @@ export default function TeamRecommendation() {
   useEffect(() => {
     if (!user?.id) return;
     if (ilhaId === "") return;
+    loadUserIslandBonus(Number(ilhaId));
     recommend();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, ilhaId, goal]);
+  }, [user?.id, ilhaId]);
+
+  function fmt1(v: number | null | undefined) {
+    return v == null ? "-" : Number(v).toFixed(1);
+  }
+  function fmt0(v: number | null | undefined) {
+    return v == null ? "-" : Number(v).toFixed(0);
+  }
+  function fmtPct(v: number | null | undefined) {
+    return v == null ? "-" : `${Math.round(Number(v) * 100)}%`;
+  }
+  async function saveIslandBonus(
+    userId: string,
+    ilhaId: number,
+    percentInt: number,
+  ) {
+    const bonus = Math.max(0, Math.min(100, percentInt)) / 100;
+
+    const { error } = await supabase.from("user_ilha_bonus").upsert(
+      {
+        user_id: userId,
+        ilha_id: ilhaId,
+        bonus_percent: bonus,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id, ilha_id" },
+    );
+    if (error) throw error;
+  }
+
+  async function loadUserIslandBonus(selectedIlhaId: number) {
+    if (!user?.id) return;
+
+    const { data, error } = await supabase
+      .from("user_ilha_bonus")
+      .select("bonus_percent")
+      .eq("user_id", user.id)
+      .eq("ilha_id", selectedIlhaId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Erro ao carregar bônus da ilha:", error);
+      return;
+    }
+    const pct =
+      data?.bonus_percent != null ? Math.round(data.bonus_percent * 100) : 0;
+    setIslandBonusInput(String(pct));
+  }
+
+  async function onSaveIslandBonus() {
+    if (!user?.id) return;
+    if (ilhaId === "") return;
+
+    setErrorMsg(null);
+    setSavingBonus(true);
+
+    try {
+      const n = Number(islandBonusInput);
+      if (Number.isNaN(n)) {
+        setErrorMsg("Valor inválido. Insira um número entre 0 e 100.");
+        return;
+      }
+
+      const percentInt = Math.max(0, Math.min(100, Math.round(n)));
+
+      await saveIslandBonus(user.id, Number(ilhaId), percentInt);
+
+      await recommend(); // Recarrega recomendação após salvar bônus
+    } catch (e: any) {
+      setErrorMsg(e?.message ?? "Falha ao salvar bônus da ilha");
+    } finally {
+      setSavingBonus(false);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -122,6 +202,7 @@ export default function TeamRecommendation() {
         <div className="space-y-1">
           <label className="text-xs text-zinc-400">Ilha</label>
           <select
+            title="ilha"
             value={ilhaId}
             onChange={(e) =>
               setIlhaId(e.target.value === "" ? "" : Number(e.target.value))
@@ -143,24 +224,26 @@ export default function TeamRecommendation() {
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs text-zinc-400">Objetivo</label>
-          <select
-            value={goal}
-            onChange={(e) => setGoal(e.target.value as Goal)}
-            className="h-10 w-full rounded-lg bg-zinc-950/60 border border-zinc-800 px-3 text-sm text-zinc-100 outline-none focus:ring-2 focus:ring-indigo-500/60"
-          >
-            <option value="balanced">Equilibrado</option>
-            <option value="berries">Força por Berries</option>
-            <option value="cooking">Foco em Cozinha</option>
-            <option value="support">Suporte / Energia</option>
-          </select>
-          <p className="text-xs text-zinc-500">Ajusta pesos do algoritmo.</p>
-        </div>
-
-        <div className="space-y-1">
-          <label className="text-xs text-zinc-400">Dica</label>
-          <div className="h-10 w-full rounded-lg bg-zinc-900/40 border border-zinc-800 px-3 flex items-center text-sm text-zinc-300">
-            {ilhaId === "" ? "Selecione uma ilha" : "Top 5 do seu banco"}
+          <label className="text-xs text-zinc-400">Bônus da Ilha (%)</label>
+          <div className="flex gap-2">
+            <input
+              value={islandBonusInput}
+              onChange={(e) =>
+                setIslandBonusInput(e.target.value.replace(/[^\d]/g, ""))
+              }
+              placeholder="Ex: 85"
+              className="h-10 w-full rounded-lg bg-zinc-950/60 border border-zinc-800 px-3 text-sm text-zinc-100 outline-none focus:ring-indigo-500/60"
+              disabled={ilhaId === "" || !user?.id}
+            />
+            <Button
+              variant="secondary"
+              className="h-10 px-4 w-auto"
+              onClick={onSaveIslandBonus}
+              disabled={ilhaId === "" || !user?.id || savingBonus}
+            >
+              {savingBonus ? "Salvando..." : "Salvar"}
+            </Button>
+            <p className="text-xs text-zinc-500">0 a 100. Ex.: 35 = 35% </p>
           </div>
         </div>
       </div>
@@ -212,9 +295,30 @@ export default function TeamRecommendation() {
 
               <div className="mt-3 space-y-1">
                 <p className="text-xs text-zinc-400">
-                  Score:{" "}
+                  Força total/dia:{" "}
                   <span className="text-zinc-100">
-                    {Number(p.score).toFixed(1)}
+                    {fmt0(p.total_strength_day)}
+                  </span>
+                </p>
+
+                <p className="text-xs text-zinc-400">
+                  Bônus da ilha:{" "}
+                  <span className="text-zinc-100">
+                    {fmtPct(p.island_bonus_percent)}
+                  </span>
+                </p>
+
+                <p className="text-xs text-zinc-400">
+                  Produção (força)/dia:{" "}
+                  <span className="text-zinc-100">
+                    🍓 {fmt0(p.berry_strength_day)} • ✨{" "}
+                    {fmt0(p.skill_strength_day)}
+                  </span>
+                </p>
+                <p className="text-xs text-zinc-400">
+                  Helps/dia (eff):{" "}
+                  <span className="text-zinc-100">
+                    {fmt1(p.helps_per_day_eff)}
                   </span>
                 </p>
 
@@ -247,13 +351,6 @@ export default function TeamRecommendation() {
                   </p>
                 )}
               </div>
-
-              {/* Próximo passo (opcional): aplicar no time */}
-              {/* <div className="mt-3">
-                <Button variant="secondary" className="h-9 w-full">
-                  Aplicar
-                </Button>
-              </div> */}
             </div>
           ))}
         </div>
