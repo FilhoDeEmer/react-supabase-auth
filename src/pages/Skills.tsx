@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "../layout/DashboardLayout";
 import { supabase } from "../lib/supabase";
-import Button from "../components/ui/Button";
 import FilterPills from "../components/ui/FilterPills";
 import Pagination from "../components/ui/Pagination";
 

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "../layout/DashboardLayout";
 import { supabase } from "../lib/supabase";
-import Button from "../components/ui/Button";
 import { getIngredientImageUrl, RECIPE_PLACEHOLDER } from "../lib/urlImages";
 import Pagination from "../components/ui/Pagination";
 

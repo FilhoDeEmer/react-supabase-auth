@@ -2,7 +2,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../auth/AuthProvider";
-import Button from "../../components/ui/Button";
 import { clearSlot, ensureTeamSlots, setPokemonInSlot } from "./teamService";
 import { X } from "lucide-react";
 import { getPokemonImageUrl, RECIPE_PLACEHOLDER } from "../../lib/urlImages";
@@ -45,7 +44,7 @@ export default function TeamSlots() {
     5: "",
   });
 
-  const [savingSlot, setSavingSlot] = useState<number | null>(null);
+  const [, setSavingSlot] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   async function loadAll() {
@@ -128,22 +127,6 @@ export default function TeamSlots() {
     options.forEach((o) => m.set(o.id, o));
     return m;
   }, [options]);
-
-  async function onSave(slot: number) {
-    if (!user?.id) return;
-
-    setErrorMsg(null);
-    setSavingSlot(slot);
-    try {
-      const selected = selectedBySlot[slot];
-      await setPokemonInSlot(slot, selected === "" ? null : Number(selected));
-      await loadAll();
-    } catch (e: any) {
-      setErrorMsg(e?.message ?? "Falha ao salvar slot.");
-    } finally {
-      setSavingSlot(null);
-    }
-  }
 
   async function onClear(slot: number) {
     setErrorMsg(null);

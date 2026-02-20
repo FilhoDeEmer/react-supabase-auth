@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabase";
 type AuthContextType = {
   user: User | null;
   session: Session | null;
+  loading: boolean;
   signInWithPassword: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
@@ -15,7 +16,7 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AutProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -23,7 +24,7 @@ export function AutProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session ?? null);
-      setUser(data.session ?? null);
+      setUser(data.session?.user ?? null);
       setLoading(false);
     });
 
