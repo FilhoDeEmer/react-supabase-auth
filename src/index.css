@@ -44,11 +44,6 @@ a:hover {
   background: rgba(99, 102, 241, 0.35); /* indigo-500 com transparência */
 }
 
-/* scrollbars (opcional, mas combina com dark) */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(113, 113, 122, 0.6) transparent; /* zinc-500 */
-}
 *::-webkit-scrollbar {
   width: 10px;
   height: 10px;
