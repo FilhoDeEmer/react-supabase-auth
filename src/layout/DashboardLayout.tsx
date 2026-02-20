@@ -3,7 +3,6 @@ import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import Button from "../components/ui/Button";
 import {
-  Home,
   BookOpen,
   Settings,
   ChevronLeft,
@@ -14,6 +13,8 @@ import {
   Package2,
   Menu,
   LogOut,
+  Info,
+  CopyPlus,
 } from "lucide-react";
 
 type DashboardLayoutProps = {
@@ -54,8 +55,8 @@ function SidebarContent({
             `${linkBase} ${isActive ? linkActive : linkInactive}`
           }
         >
-          <Home className="h-4 w-4" />
-          <span className={labelClass}>Home</span>
+          <CopyPlus className="h-4 w-4" />
+          <span className={labelClass}>Time</span>
         </NavLink>
        
         <NavLink
@@ -110,6 +111,16 @@ function SidebarContent({
         </NavLink>
 
         {/*Exemplo para criação de novos links*/}
+        <NavLink
+          to="/sobre"
+          onClick={onNavigate}
+          className={({ isActive }) =>
+            `${linkBase} ${isActive ? linkActive : linkInactive}`
+          }
+        >
+          <Info className="h-4 w-4" />
+          <span className={labelClass}>Sobre</span>
+        </NavLink>
         <NavLink
           to="/dashboard/settings"
           onClick={onNavigate}

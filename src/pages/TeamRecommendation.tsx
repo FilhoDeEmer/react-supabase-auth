@@ -76,7 +76,6 @@ export default function TeamRecommendation() {
 
     try {
       const { data, error } = await supabase.rpc("recommend_team_fast", {
-        p_user_id: user.id,
         p_ilha_id: Number(ilhaId),
       });
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "../layout/DashboardLayout";
 import { supabase } from "../lib/supabase";
@@ -80,9 +81,9 @@ export default function Pokedex() {
             sleep_type,
             carry_base,
             frequency,
-            ingredientes,
             tipo:type (tipo, berry),
             main_skill:main_skills (id, nome, descricao),
+            ingredientes,
             pokemon_ingrediente:pokemon_ingrediente (
               ingredientes:id_ingrediente (id, nome)
             )
@@ -286,7 +287,7 @@ export default function Pokedex() {
                         className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950/40 px-2 py-1"
                       >
                         <img
-                          src={getIngredientImageUrl(ing.nome)}
+                          src={getIngredientImageUrl(ing.nome ?? "")}
                           alt={ing.nome ?? `Ingrediente ${ing.id}`}
                           className="h-5 w-5 object-contain"
                           onError={(e) =>
