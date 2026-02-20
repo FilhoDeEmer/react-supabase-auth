@@ -56,7 +56,7 @@ export default function Register() {
                         required
                         className="w-full h-11 rounded-lg bg-zinc-950/60 border border-zinc-800 px-3 text-zinc-100 placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-500/60"
                     />
-                </div>'
+                </div>
                 <div className="space-y-1">
                     <label className="text-sm text-zinc-300" htmlFor="password">
                         Senha
