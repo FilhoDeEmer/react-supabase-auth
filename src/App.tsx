@@ -12,6 +12,7 @@ import Ingredientes from "./pages/Ingredientes";
 import Banco from "./pages/Banco";
 import Settings from "./pages/Settings";
 import Landing from "./pages/Langing";
+import AuthCallback from "./pages/AuthCallback";
 
 export default function App() {
   return(
@@ -27,6 +28,7 @@ export default function App() {
       <Route path="/dashboard/ingredientes" element={<Ingredientes/>} />
       <Route path="/dashboard/banco" element={<RequireAuth><Banco/></RequireAuth>} />
       <Route path="/dashboard/settings" element={<RequireAuth><Settings/></RequireAuth>} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/sobre" element={<Landing/>} />
       <Route
         path="/dashboard"
