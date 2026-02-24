@@ -802,14 +802,22 @@ export default function Banco() {
                   </select>
                 </div>
               </div>
-
+              <p>Ingredientes</p>
               <div className="grid grid-cols-3 gap-3">
                 {(
                   ["ingredient_1", "ingredient_2", "ingredient_3"] as const
                 ).map((key, idx) => (
                   <div key={key} className="space-y-1">
                     <label className="text-xs text-zinc-400">
-                      Ingrediente {idx + 1}
+                      {key === "ingredient_1" ? (
+                        "Nv. 1"
+                      ) : key === "ingredient_2" ? (
+                        "Nv. 30"
+                      ) : key === "ingredient_3" ? (
+                        "Nv. 60"
+                      ) : (
+                        <span>Ingrediente {idx + 1} (opcional)</span>
+                      )}
                     </label>
                     <select
                       title="ingredientes"
@@ -833,7 +841,7 @@ export default function Banco() {
                   </div>
                 ))}
               </div>
-
+              <p>Sub Skills</p>
               <div className="grid grid-cols-3 gap-3">
                 {(
                   [
@@ -846,7 +854,19 @@ export default function Banco() {
                 ).map((key, idx) => (
                   <div key={key} className="space-y-1">
                     <label className="text-xs text-zinc-400">
-                      Sub_Skills {idx + 1}
+                      {key === "sub_skill1" ? (
+                        "Nv. 15"
+                      ) : key === "sub_skill2" ? (
+                        "Nv. 25"
+                      ) : key === "sub_skill3" ? (
+                        "Nv. 50"
+                      ) : key === "sub_skill4" ? (
+                        "Nv. 75"
+                      ) : key === "sub_skill5" ? (
+                        "Nv. 100"
+                      ) : (
+                        <span>Sub Skill {idx + 1} (opcional)</span>
+                      )}
                     </label>
                     <select
                       title="sub_skills"
