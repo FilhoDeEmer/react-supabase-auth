@@ -225,7 +225,7 @@ export default function TeamSlots() {
                 <p className="font-semibold">{displayName}</p>
                 {dexNum ? (
                   <img
-                    src={getPokemonImageUrl(dexNum, isShiny)}
+                    src={getPokemonImageUrl(dexNum, isShiny, displayName )}
                     alt={r.pokemon_banco?.pokemon_base.pokemon}
                     className="h-24 w-24 object-contain items-center"
                     onError={(e) => (e.currentTarget.src = RECIPE_PLACEHOLDER)}

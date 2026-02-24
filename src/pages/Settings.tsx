@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "../layout/DashboardLayout";
 import Button from "../components/ui/Button";
@@ -259,6 +260,7 @@ export default function Settings() {
             <div className="space-y-1">
               <label className="text-xs text-zinc-400">Tema</label>
               <select
+                title="theme"
                 value={theme}
                 onChange={(e) => setTheme(e.target.value as "dark" | "light")}
                 className="w-full h-10 rounded-lg bg-zinc-950/60 border border-zinc-800 px-3 text-sm text-zinc-100 outline-none focus:ring-2 focus:ring-indigo-500/60"

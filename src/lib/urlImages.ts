@@ -8,6 +8,10 @@
  * https://www.serebii.net/pokemonsleep/pokemon/type/grass.png
  * https://www.serebii.net/pokemonsleep/pokemon/sleep/1.png
  * https://www.serebii.net/pokemonsleep/items/bulbasaurcandy.png
+ * https://www.serebii.net/pokemonsleep/pokemon/849-toxtricityampedform.png 
+ * https://www.serebii.net/pokemonsleep/pokemon/shiny/849-toxtricityampedform.png
+ * https://www.serebii.net/pokemonsleep/pokemon/849-toxtricitylowkeyform.png
+ * https://www.serebii.net/pokemonsleep/pokemon/shiny/849-toxtricitylowkeyform.png
  */
 export const RECIPE_PLACEHOLDER = "/recipe-placeholder.png";
 
@@ -54,7 +58,12 @@ export function getTypeImageUrl(typeName: string) {
 }
 
 // === Dex-number-based ===
-export function getPokemonImageUrl(dexNum: number, isShiny?: boolean) {
+export function getPokemonImageUrl(dexNum: number, isShiny?: boolean, nome? : string) {
+  if (dexNum === 849) {
+    const form = nome?.toLowerCase().includes("amped") ? "ampedform" : "lowkeyform";
+    const shinyPart = isShiny ? "shiny/" : "";
+    return `https://www.serebii.net/pokemonsleep/pokemon/${shinyPart}849-toxtricity${form}.png`;
+  }
   return isShiny
     ? `https://www.serebii.net/pokemonsleep/pokemon/shiny/${dexNum}.png`
     : `https://www.serebii.net/pokemonsleep/pokemon/${dexNum}.png`;

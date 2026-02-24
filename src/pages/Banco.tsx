@@ -591,7 +591,7 @@ export default function Banco() {
                     </div>
                     {dex ? (
                       <img
-                        src={getPokemonImageUrl(dex, isShiny)}
+                        src={getPokemonImageUrl(dex, isShiny, name)}
                         alt={name}
                         className="h-20 w-20 object-contain"
                         onError={(e) =>

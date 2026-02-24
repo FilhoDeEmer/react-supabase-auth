@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import Button from "../components/ui/Button";
 import {
@@ -15,7 +15,9 @@ import {
   LogOut,
   Info,
   CopyPlus,
+  LogIn,
 } from "lucide-react";
+import UserAvatar from "../components/ui/UserAvatar";
 
 type DashboardLayoutProps = {
   title?: string;
@@ -58,7 +60,7 @@ function SidebarContent({
           <CopyPlus className="h-4 w-4" />
           <span className={labelClass}>Time</span>
         </NavLink>
-       
+
         <NavLink
           to="/dashboard/banco"
           onClick={onNavigate}
@@ -152,6 +154,7 @@ export default function DashboardLayout({
   children,
 }: DashboardLayoutProps) {
   const { user, signOut } = useAuth();
+  const { profile, profileLoading } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const [collapsed, setCollapsed] = useState(false);
@@ -160,6 +163,12 @@ export default function DashboardLayout({
   const desktopSidebarWidth = collapsed ? collapsedW : expandedW;
   const desktopPaddingLeft = collapsed ? "lg:pl-20" : "lg:pl-64";
 
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  if (profileLoading) {
+    return <p>Carregando perfil...</p>;
+  }
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-10 overflow-x-hidden">
       {/* Mobile Sidebar */}
@@ -221,17 +230,31 @@ export default function DashboardLayout({
           </div>
 
           <div className="flex items-center gap-3">
+            <UserAvatar size={36} />
             <div className="hidden sm:block text-right">
-              <p className="text-xs text-zinc-400">Logado como</p>
-              <p className="text-sm">{user?.email}</p>
+              <p className="text-sm">{profile?.display_name}</p>
             </div>
 
             <Button
-              onClick={() => signOut()}
+              onClick={async () => {
+                if (user) {
+                  await Promise.resolve(signOut?.());
+                  navigate("/login", { replace: true });
+                } else {
+                  navigate("/login", {
+                    state: { from: location.pathname },
+                    replace: true,
+                  });
+                }
+              }}
               variant="primary"
               className="w-auto h-10 px-4"
             >
-              <LogOut className="h-4 w-4" />
+              {user ? (
+                <LogOut className="h-4 w-4" />
+              ) : (
+                <LogIn className="h-4 w-4" />
+              )}
             </Button>
           </div>
         </div>

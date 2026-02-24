@@ -196,7 +196,7 @@ export default function Pokedex() {
                     </p>
                   </div>
                   <img
-                    src={getPokemonImageUrl(p.dex_num)}
+                    src={getPokemonImageUrl(p.dex_num, false, p.pokemon)}
                     alt={p.pokemon}
                     className="h-24 w-24 object-cover"
                     onError={(e) => (e.currentTarget.src = RECIPE_PLACEHOLDER)}
@@ -317,7 +317,7 @@ export default function Pokedex() {
 
               <div className="flex justify-center">
                 <img
-                  src={getPokemonImageUrl(selected.dex_num)}
+                  src={getPokemonImageUrl(selected.dex_num, false, selected.pokemon)}
                   alt={selected.pokemon}
                   className="h-40 w-40 object-contain"
                   onError={(e) => (e.currentTarget.src = RECIPE_PLACEHOLDER)}
