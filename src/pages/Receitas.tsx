@@ -151,7 +151,7 @@ export default function SearchRecipes() {
                   <p className="text-xs text-zinc-400 mt-3">Ingredientes:</p>
                   {r.receita_ingredientes?.length ? (
                     <ul className="mt-2 space-y-1 text-sm text-zinc-300">
-                      {r.receita_ingredientes.slice(0, 3).map((ing) => (
+                      {r.receita_ingredientes.slice(0, 4).map((ing) => (
                         <li
                           key={ing.id}
                           className="flex items-center justify-between gap-3"
@@ -165,9 +165,9 @@ export default function SearchRecipes() {
                           </span>
                         </li>
                       ))}
-                      {r.receita_ingredientes.length > 3 && (
+                      {r.receita_ingredientes.length > 4 && (
                         <li className="text-xs text-zinc-500">
-                          +{r.receita_ingredientes.length - 3} ingredientes
+                          +{r.receita_ingredientes.length - 4} ingredientes
                         </li>
                       )}
                     </ul>
