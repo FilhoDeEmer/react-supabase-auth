@@ -1,5 +1,13 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 
@@ -41,52 +49,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
 
-  function loadProfileCache(userId: string) {
+  // evita setState com user antigo (race condition)
+  const latestUserIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    latestUserIdRef.current = user?.id ?? null;
+  }, [user?.id]);
+
+  const loadProfileCache = useCallback((userId: string) => {
     try {
       const raw = localStorage.getItem(PROFILE_CACHE_KEY);
       if (!raw) return null;
-      const parsed = JSON.parse(raw) as Profile;
-      if (parsed?.user_id !== userId) return null;
+      const parsed = JSON.parse(raw) as Profile | null;
+      if (!parsed || parsed.user_id !== userId) return null;
       return parsed;
     } catch {
       return null;
     }
-  }
+  }, []);
 
-  function saveProfileCache(p: Profile | null) {
+  const saveProfileCache = useCallback((p: Profile | null) => {
     try {
       if (!p) localStorage.removeItem(PROFILE_CACHE_KEY);
       else localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(p));
     } catch {
       // ignore
     }
-  }
+  }, []);
 
-  async function refreshProfile() {
-    if (!user?.id) return;
+  const clearProfile = useCallback(() => {
+    setProfile(null);
+    saveProfileCache(null);
+  }, [saveProfileCache]);
+
+  const refreshProfile = useCallback(async () => {
+    const userId = latestUserIdRef.current;
+    if (!userId) return;
 
     setProfileLoading(true);
     try {
       const { data, error } = await supabase
         .from("profiles")
         .select("user_id, display_name, avatar_url, theme, updated_at")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .maybeSingle();
 
       if (error) throw error;
+
+      // se o user mudou durante a requisição, ignora
+      if (latestUserIdRef.current !== userId) return;
 
       const p = (data ?? null) as Profile | null;
       setProfile(p);
       saveProfileCache(p);
     } finally {
-      setProfileLoading(false);
+      // evita desligar loading de um user antigo
+      if (latestUserIdRef.current === userId) setProfileLoading(false);
     }
-  }
-
-  function clearProfile() {
-    setProfile(null);
-    saveProfileCache(null);
-  }
+  }, [saveProfileCache]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -95,32 +114,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange(
-      (_event, newSession) => {
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-        setLoading(false); // ✅ importante
-      },
-    );
+    const { data } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession ?? null);
+      setUser(newSession?.user ?? null);
+      setLoading(false);
 
-    return () => sub.subscription.unsubscribe();
-  }, []);
+      // limpa rápido quando desloga (evita “resquício” visual)
+      if (!newSession?.user) clearProfile();
+    });
 
-  // quando user muda: tenta cache e revalida
+    return () => data.subscription.unsubscribe();
+  }, [clearProfile]);
+
   useEffect(() => {
-    if (!user?.id) {
+    const userId = user?.id;
+    if (!userId) {
       clearProfile();
       return;
     }
 
-    // 1) carrega cache instantâneo
-    const cached = loadProfileCache(user.id);
+    const cached = loadProfileCache(userId);
     if (cached) setProfile(cached);
 
-    // 2) revalida do banco
     refreshProfile();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [user?.id, clearProfile, loadProfileCache, refreshProfile]);
 
   async function signInWithPassword(email: string, password: string) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -138,8 +155,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function signOut() {
+    clearProfile();
     const { error } = await supabase.auth.signOut();
-    clearProfile(); // ✅ limpa cache ao sair
     if (error) throw error;
   }
 
@@ -160,12 +177,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       session,
       loading,
-
       profile,
       profileLoading,
       refreshProfile,
       clearProfile,
-
       signInWithPassword,
       signInWithGoogle,
       signUp,
@@ -173,7 +188,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       resetPassword,
       updatePassword,
     }),
-    [user, session, loading, profile, profileLoading],
+    [user, session, loading, profile, profileLoading, refreshProfile, clearProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
