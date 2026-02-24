@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
+import { set } from "zod";
 
 type Profile = {
   user_id: string;
@@ -45,6 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -112,19 +114,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(data.session ?? null);
       setUser(data.session?.user ?? null);
       setLoading(false);
+      setInitialized(true);
     });
 
     const { data } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession ?? null);
       setUser(newSession?.user ?? null);
-      setLoading(false);
 
-      // limpa rápido quando desloga (evita “resquício” visual)
-      if (!newSession?.user) clearProfile();
+      if (!initialized) setLoading(false);
     });
 
     return () => data.subscription.unsubscribe();
-  }, [clearProfile]);
+  }, [initialized]);
 
   useEffect(() => {
     const userId = user?.id;
@@ -145,7 +146,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function signInWithGoogle() {
-    const { error } = await supabase.auth.signInWithOAuth({ provider: "google" });
+    const { error } = await supabase.auth.signInWithOAuth({ provider: "google", 
+      options: { redirectTo: `${window.location.origin}/auth/callback` } });
     if (error) throw error;
   }
 
@@ -199,3 +201,5 @@ export function useAuth() {
   if (!ctx) throw new Error("useAuth deve ser usado dentro de <AuthProvider>");
   return ctx;
 }
+
+
