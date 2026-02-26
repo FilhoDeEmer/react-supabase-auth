@@ -40,12 +40,13 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const PROFILE_CACHE_KEY = "sleepcalc:profile:v1";
+const AUTH_CALLBACK_PATH = "/auth/callback";
+const RESET_PASSWORD_PATH = "/reset-password";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [initialized, setInitialized] = useState(false);
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -102,30 +103,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const p = (data ?? null) as Profile | null;
       setProfile(p);
       saveProfileCache(p);
+    } catch (err) {
+      console.error("Erro ao carregar profile:", err);
     } finally {
       // evita desligar loading de um user antigo
       if (latestUserIdRef.current === userId) setProfileLoading(false);
     }
   }, [saveProfileCache]);
 
+  // init + listener
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    let alive = true;
+
+    (async () => {
+      const { data, error } = await supabase.auth.getSession();
+      if (!alive) return;
+
+      if (error) console.error("getSession error:", error);
+
       setSession(data.session ?? null);
       setUser(data.session?.user ?? null);
       setLoading(false);
-      setInitialized(true);
-    });
+    })();
 
-    const { data } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession ?? null);
       setUser(newSession?.user ?? null);
-
-      if (!initialized) setLoading(false);
+      setLoading(false);
     });
 
-    return () => data.subscription.unsubscribe();
-  }, [initialized]);
+    return () => {
+      alive = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
 
+  // profile: cache + fetch
   useEffect(() => {
     const userId = user?.id;
     if (!userId) {
@@ -145,9 +158,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function signInWithGoogle() {
-    const { error } = await supabase.auth.signInWithOAuth({ provider: "google", 
-      options: { redirectTo: `${window.location.origin}/auth/callback`,
-    queryParams: { prompt: "select_account"} } });
+    const redirectTo = `${window.location.origin}${AUTH_CALLBACK_PATH}`;
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo,
+        queryParams: {
+          prompt: "select_account",
+        },
+      },
+    });
+
     if (error) throw error;
   }
 
@@ -163,9 +185,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function resetPassword(email: string) {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
+    const redirectTo = `${window.location.origin}${RESET_PASSWORD_PATH}`;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
     if (error) throw error;
   }
 
@@ -201,5 +222,3 @@ export function useAuth() {
   if (!ctx) throw new Error("useAuth deve ser usado dentro de <AuthProvider>");
   return ctx;
 }
-
-

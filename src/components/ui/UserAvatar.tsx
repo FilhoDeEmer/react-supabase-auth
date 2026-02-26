@@ -1,4 +1,5 @@
 import { useAuth } from "../../auth/AuthProvider";
+import { useState } from "react";
 
 type Props = {
   size?: number;
@@ -6,17 +7,23 @@ type Props = {
 
 export default function UserAvatar({ size = 32 }: Props) {
   const { profile } = useAuth();
+  const [imgError, setImgError] = useState(false);
 
-  const displayName = profile?.display_name || "User";
+  const displayName = profile?.display_name?.trim() || "User";
 
-  const initials = displayName.charAt(0).toUpperCase();
+  const initials = displayName
+    .split(" ")
+    .slice(0, 2)
+    .map((n) => n.charAt(0).toUpperCase())
+    .join("");
 
-  if (profile?.avatar_url) {
+  if (profile?.avatar_url && !imgError) {
     return (
       <img
         src={profile.avatar_url}
         alt={displayName}
-        className="rounded-full object-cover"
+        onError={() => setImgError(true)}
+        className="rounded-full object-cover border border-zinc-700"
         style={{ width: size, height: size }}
       />
     );

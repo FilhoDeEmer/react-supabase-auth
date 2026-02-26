@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import DashboardLayout from "../layout/DashboardLayout";
 import { supabase } from "../lib/supabase";
 import FilterPills from "../components/ui/FilterPills";
 import { getRecipeImageUrl, RECIPE_PLACEHOLDER } from "../lib/urlImages";
 import Pagination from "../components/ui/Pagination";
+import Button from "../components/ui/Button";
 
 const RECIPE_TYPE_OPTIONS = [
   { label: "Todas", value: "all" },
@@ -12,27 +13,26 @@ const RECIPE_TYPE_OPTIONS = [
   { label: "Dessert", value: "Desserts/Drinks" },
 ];
 
+type RecipeIngredientRow = {
+  id: number;
+  quantidade: number;
+  ingredientes: { nome: string | null } | { nome: string | null }[] | null;
+};
+
 type RecipesBaseRow = {
   id: number;
   nome: string;
-  tipo: string;
+  tipo: string | null;
   energia_base: number | null;
-  receita_ingredientes:
-    | null
-    | {
-        id: number;
-        quantidade: number;
-        ingredientes: {
-          nome: string | null;
-        };
-      }[];
+  receita_ingredientes: RecipeIngredientRow[] | null;
 };
 
 const PAGE_SIZE = 24;
+
 export default function SearchRecipes() {
   const [page, setPage] = useState(1);
-
   const [tipoFiltro, setTipoFiltro] = useState("all");
+
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -43,48 +43,55 @@ export default function SearchRecipes() {
     return Math.max(1, Math.ceil(total / PAGE_SIZE));
   }, [total]);
 
-  async function load() {
+  // se totalPages mudar (ex: filtro), garante que page não fique fora do range
+  useEffect(() => {
+    setPage((p) => Math.min(Math.max(1, p), totalPages));
+  }, [totalPages]);
+
+  const load = useCallback(async () => {
     setLoading(true);
     setErrorMsg(null);
 
     try {
-      const from = (page - 1) * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
-
+      // monta query SEM range primeiro (filtra antes de paginar)
       let q = supabase
         .from("receitas")
         .select(
           `
-                    id,
-                    nome,
-                    tipo,
-                    energia_base,
-                    receita_ingredientes (id, quantidade, ingredientes: id_ingrediente (nome))
-                    `,
+          id,
+          nome,
+          tipo,
+          energia_base,
+          receita_ingredientes (id, quantidade, ingredientes:id_ingrediente (nome))
+        `,
           { count: "exact" },
         )
-        .order("id", { ascending: true })
-        .range(from, to);
+        .order("id", { ascending: true });
 
       if (tipoFiltro !== "all") {
         q = q.eq("tipo", tipoFiltro);
       }
-      const { data, error, count } = await q;
 
+      // agora pagina
+      const from = (page - 1) * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      q = q.range(from, to);
+
+      const { data, error, count } = await q;
       if (error) throw error;
 
-      setItems((data ?? []) as any);
+      setItems((data ?? []) as RecipesBaseRow[]);
       setTotal(count ?? 0);
     } catch (e: any) {
-      setErrorMsg(e?.message ?? " Falha ao carregar as receitas");
+      setErrorMsg(e?.message ?? "Falha ao carregar as receitas");
     } finally {
       setLoading(false);
     }
-  }
+  }, [page, tipoFiltro]);
 
   useEffect(() => {
     load();
-  }, [page, tipoFiltro]);
+  }, [load]);
 
   return (
     <DashboardLayout title="Receitas">
@@ -92,8 +99,9 @@ export default function SearchRecipes() {
         <div>
           <h2 className="text-lg font-semibold">Receitas</h2>
           <p className="text-sm text-zinc-400">
-            Lista de receitas - {loading ? "..." : total}
+            Lista de receitas — {loading ? "..." : total}
           </p>
+
           <FilterPills
             options={RECIPE_TYPE_OPTIONS}
             value={tipoFiltro}
@@ -104,18 +112,27 @@ export default function SearchRecipes() {
             className="mt-3"
           />
         </div>
+
+        <Button
+          variant="secondary"
+          className="h-10 px-4 w-auto"
+          onClick={load}
+          disabled={loading}
+        >
+          Recarregar
+        </Button>
       </div>
-      {/* Erro */}
+
       {errorMsg && (
         <div className="mt-4 rounded-lg border border-red-900/50 bg-red-950/40 px-3 py-2 text-sm text-red-200">
           {errorMsg}
         </div>
       )}
-      {/*Contúdo*/}
+
       <div className="mt-5">
         {loading ? (
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
-            <p className="text-sm text-zinc-400">Carregando receitas</p>
+            <p className="text-sm text-zinc-400">Carregando receitas...</p>
           </div>
         ) : items.length === 0 ? (
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
@@ -128,27 +145,33 @@ export default function SearchRecipes() {
                 key={r.id}
                 className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4 min-w-0"
               >
-                {/*Header */}
+                {/* Header */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-semibold truncate">{r.nome}</p>
-                    <p className="text-xs text-zinc-400">{r.tipo}</p>
+                    <p className="text-xs text-zinc-400">{r.tipo ?? "-"}</p>
                   </div>
 
                   <span className="shrink-0 text-[10px] rounded-full bg-zinc-800 px-2 py-0.5 text-zinc-200">
-                    BP:{r.energia_base ?? "--"}
+                    BP: {r.energia_base ?? "--"}
                   </span>
                 </div>
-                <img
-                  src={getRecipeImageUrl(r.nome)}
-                  alt={r.nome}
-                  className="h-24 w-24 object-cover"
-                  onError={(e) => (e.currentTarget.src = RECIPE_PLACEHOLDER)}
-                />
+
+                <div className="mt-3 flex justify-center">
+                  <img
+                    src={getRecipeImageUrl(r.nome)}
+                    alt={r.nome}
+                    className="h-24 w-24 object-contain"
+                    onError={(e) => (e.currentTarget.src = RECIPE_PLACEHOLDER)}
+                  />
+                </div>
+
                 <div className="mt-3 border-t border-zinc-800/60 pt-3" />
-                {/*BODY*/}
+
+                {/* Body */}
                 <div>
                   <p className="text-xs text-zinc-400 mt-3">Ingredientes:</p>
+
                   {r.receita_ingredientes?.length ? (
                     <ul className="mt-2 space-y-1 text-sm text-zinc-300">
                       {r.receita_ingredientes.slice(0, 4).map((ing) => (
@@ -157,7 +180,9 @@ export default function SearchRecipes() {
                           className="flex items-center justify-between gap-3"
                         >
                           <span className="min-w-0 truncate">
-                            {ing.ingredientes?.nome ??
+                            {(Array.isArray(ing.ingredientes)
+                              ? ing.ingredientes[0]?.nome
+                              : ing.ingredientes?.nome) ??
                               "Ingrediente desconhecido"}
                           </span>
                           <span className="shrink-0 text-zinc-400">
@@ -165,6 +190,7 @@ export default function SearchRecipes() {
                           </span>
                         </li>
                       ))}
+
                       {r.receita_ingredientes.length > 4 && (
                         <li className="text-xs text-zinc-500">
                           +{r.receita_ingredientes.length - 4} ingredientes
@@ -180,7 +206,7 @@ export default function SearchRecipes() {
           </div>
         )}
       </div>
-      {/*Paginação */}
+
       <Pagination
         page={page}
         totalPages={totalPages}

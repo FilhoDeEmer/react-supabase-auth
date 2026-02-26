@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../auth/AuthProvider";
 import Button from "../components/ui/Button";
@@ -46,10 +45,22 @@ export default function TeamRecommendation() {
   const [islandBonusInput, setIslandBonusInput] = useState<string>("");
   const [savingBonus, setSavingBonus] = useState(false);
 
+  const requestIdRef = useRef(0);
+
   const ilhaSelected = useMemo(
     () => ilhas.find((i) => i.id === ilhaId) ?? null,
     [ilhas, ilhaId],
   );
+
+  function fmt1(v: number | null | undefined) {
+    return v == null ? "-" : Number(v).toFixed(1);
+  }
+  function fmt0(v: number | null | undefined) {
+    return v == null ? "-" : Number(v).toFixed(0);
+  }
+  function fmtPct(v: number | null | undefined) {
+    return v == null ? "-" : `${Math.round(Number(v) * 100)}%`;
+  }
 
   async function loadIlhas() {
     const { data, error } = await supabase
@@ -61,72 +72,8 @@ export default function TeamRecommendation() {
       console.error(error);
       return;
     }
-    setIlhas((data ?? []) as any);
-  }
 
-  async function recommend() {
-    if (!user?.id) return;
-    if (ilhaId === "") {
-      setErrorMsg("Selecione uma ilha.");
-      return;
-    }
-
-    setErrorMsg(null);
-    setLoading(true);
-
-    try {
-      const { data, error } = await supabase.rpc("recommend_team_fast", {
-        p_ilha_id: Number(ilhaId),
-      });
-
-      if (error) throw error;
-      setReco((data ?? []) as any);
-    } catch (e: any) {
-      setErrorMsg(e?.message ?? "Falha ao gerar recomendação");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    loadIlhas();
-  }, []);
-
-  // opcional: auto-recomendar quando escolher ilha
-  useEffect(() => {
-    if (!user?.id) return;
-    if (ilhaId === "") return;
-    loadUserIslandBonus(Number(ilhaId));
-    recommend();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, ilhaId]);
-
-  function fmt1(v: number | null | undefined) {
-    return v == null ? "-" : Number(v).toFixed(1);
-  }
-  function fmt0(v: number | null | undefined) {
-    return v == null ? "-" : Number(v).toFixed(0);
-  }
-  function fmtPct(v: number | null | undefined) {
-    return v == null ? "-" : `${Math.round(Number(v) * 100)}%`;
-  }
-  async function saveIslandBonus(
-    userId: string,
-    ilhaId: number,
-    percentInt: number,
-  ) {
-    const bonus = Math.max(0, Math.min(100, percentInt)) / 100;
-
-    const { error } = await supabase.from("user_ilha_bonus").upsert(
-      {
-        user_id: userId,
-        ilha_id: ilhaId,
-        bonus_percent: bonus,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id, ilha_id" },
-    );
-    if (error) throw error;
+    setIlhas((data ?? []) as IlhaOption[]);
   }
 
   async function loadUserIslandBonus(selectedIlhaId: number) {
@@ -143,9 +90,61 @@ export default function TeamRecommendation() {
       console.error("Erro ao carregar bônus da ilha:", error);
       return;
     }
+
     const pct =
       data?.bonus_percent != null ? Math.round(data.bonus_percent * 100) : 0;
+
     setIslandBonusInput(String(pct));
+  }
+
+  async function saveIslandBonus(userId: string, ilhaIdNum: number, percentInt: number) {
+    const bonus = Math.max(0, Math.min(100, percentInt)) / 100;
+
+    const { error } = await supabase.from("user_ilha_bonus").upsert(
+      {
+        user_id: userId,
+        ilha_id: ilhaIdNum,
+        bonus_percent: bonus,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id, ilha_id" },
+    );
+
+    if (error) throw error;
+  }
+
+  async function recommend() {
+    if (!user?.id) return;
+
+    if (ilhaId === "") {
+      setErrorMsg("Selecione uma ilha.");
+      setReco([]);
+      return;
+    }
+
+    setErrorMsg(null);
+    setLoading(true);
+
+    const myReqId = ++requestIdRef.current;
+
+    try {
+      const { data, error } = await supabase.rpc("recommend_team_fast", {
+        p_ilha_id: Number(ilhaId),
+      });
+
+      if (error) throw error;
+
+      // se chegou uma resposta antiga, ignora
+      if (requestIdRef.current !== myReqId) return;
+
+      setReco((data ?? []) as RecommendationRow[]);
+    } catch (e: any) {
+      if (requestIdRef.current !== myReqId) return;
+      setErrorMsg(e?.message ?? "Falha ao gerar recomendação");
+      setReco([]);
+    } finally {
+      if (requestIdRef.current === myReqId) setLoading(false);
+    }
   }
 
   async function onSaveIslandBonus() {
@@ -165,14 +164,31 @@ export default function TeamRecommendation() {
       const percentInt = Math.max(0, Math.min(100, Math.round(n)));
 
       await saveIslandBonus(user.id, Number(ilhaId), percentInt);
-
-      await recommend(); // Recarrega recomendação após salvar bônus
+      await recommend();
     } catch (e: any) {
       setErrorMsg(e?.message ?? "Falha ao salvar bônus da ilha");
     } finally {
       setSavingBonus(false);
     }
   }
+
+  useEffect(() => {
+    loadIlhas();
+  }, []);
+
+  // auto: quando escolhe ilha, carrega bônus e recomenda
+  useEffect(() => {
+    if (!user?.id) return;
+    if (ilhaId === "") {
+      setReco([]);
+      setIslandBonusInput("");
+      return;
+    }
+
+    loadUserIslandBonus(Number(ilhaId));
+    recommend();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, ilhaId]);
 
   return (
     <div className="space-y-4">
@@ -196,7 +212,6 @@ export default function TeamRecommendation() {
         </div>
       </div>
 
-      {/* Filtros */}
       <div className="grid gap-2 sm:grid-cols-3">
         <div className="space-y-1">
           <label className="text-xs text-zinc-400">Ilha</label>
@@ -215,10 +230,9 @@ export default function TeamRecommendation() {
               </option>
             ))}
           </select>
+
           {ilhaSelected?.berries && (
-            <p className="text-xs text-zinc-500">
-              Berries: {ilhaSelected.berries}
-            </p>
+            <p className="text-xs text-zinc-500">Berries: {ilhaSelected.berries}</p>
           )}
         </div>
 
@@ -231,9 +245,10 @@ export default function TeamRecommendation() {
                 setIslandBonusInput(e.target.value.replace(/[^\d]/g, ""))
               }
               placeholder="Ex: 85"
-              className="h-10 w-full rounded-lg bg-zinc-950/60 border border-zinc-800 px-3 text-sm text-zinc-100 outline-none focus:ring-indigo-500/60"
+              className="h-10 w-full rounded-lg bg-zinc-950/60 border border-zinc-800 px-3 text-sm text-zinc-100 outline-none focus:ring-2 focus:ring-indigo-500/60"
               disabled={ilhaId === "" || !user?.id}
             />
+
             <Button
               variant="secondary"
               className="h-10 px-4 w-auto"
@@ -242,8 +257,9 @@ export default function TeamRecommendation() {
             >
               {savingBonus ? "Salvando..." : "Salvar"}
             </Button>
-            <p className="text-xs text-zinc-500">0 a 100. Ex.: 35 = 35% </p>
           </div>
+
+          <p className="text-xs text-zinc-500">0 a 100. Ex.: 35 = 35%</p>
         </div>
       </div>
 
@@ -253,7 +269,6 @@ export default function TeamRecommendation() {
         </div>
       )}
 
-      {/* Cards */}
       {reco.length === 0 ? (
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
           <p className="text-sm text-zinc-400">
@@ -280,7 +295,7 @@ export default function TeamRecommendation() {
 
                 {p.dex_num ? (
                   <img
-                    src={getPokemonImageUrl(p.dex_num, false)}
+                    src={getPokemonImageUrl(p.dex_num, false, p.pokemon)}
                     alt={p.pokemon}
                     className="h-20 w-20 object-contain"
                     onError={(e) => (e.currentTarget.src = RECIPE_PLACEHOLDER)}
@@ -295,30 +310,24 @@ export default function TeamRecommendation() {
               <div className="mt-3 space-y-1">
                 <p className="text-xs text-zinc-400">
                   Força total/dia:{" "}
-                  <span className="text-zinc-100">
-                    {fmt0(p.total_strength_day)}
-                  </span>
+                  <span className="text-zinc-100">{fmt0(p.total_strength_day)}</span>
                 </p>
 
                 <p className="text-xs text-zinc-400">
                   Bônus da ilha:{" "}
+                  <span className="text-zinc-100">{fmtPct(p.island_bonus_percent)}</span>
+                </p>
+
+                <p className="text-xs text-zinc-400">
+                  Produção/dia:{" "}
                   <span className="text-zinc-100">
-                    {fmtPct(p.island_bonus_percent)}
+                    🍓 {fmt0(p.berry_strength_day)} • ✨ {fmt0(p.skill_strength_day)}
                   </span>
                 </p>
 
                 <p className="text-xs text-zinc-400">
-                  Produção (força)/dia:{" "}
-                  <span className="text-zinc-100">
-                    🍓 {fmt0(p.berry_strength_day)} • ✨{" "}
-                    {fmt0(p.skill_strength_day)}
-                  </span>
-                </p>
-                <p className="text-xs text-zinc-400">
                   Helps/dia (eff):{" "}
-                  <span className="text-zinc-100">
-                    {fmt1(p.helps_per_day_eff)}
-                  </span>
+                  <span className="text-zinc-100">{fmt1(p.helps_per_day_eff)}</span>
                 </p>
 
                 <p className="text-xs text-zinc-400">
@@ -327,21 +336,13 @@ export default function TeamRecommendation() {
 
                 <p className="text-xs text-zinc-400">
                   Berry:{" "}
-                  <span
-                    className={
-                      p.island_berry_match ? "text-green-300" : "text-zinc-100"
-                    }
-                  >
-                    {p.tipo_berry ?? "-"}{" "}
-                    {p.island_berry_match ? "(match)" : ""}
+                  <span className={p.island_berry_match ? "text-green-300" : "text-zinc-100"}>
+                    {p.tipo_berry ?? "-"} {p.island_berry_match ? "(match)" : ""}
                   </span>
                 </p>
 
                 <p className="text-xs text-zinc-400">
-                  Skill:{" "}
-                  <span className="text-zinc-100">
-                    {p.main_skill_nome ?? "-"}
-                  </span>
+                  Skill: <span className="text-zinc-100">{p.main_skill_nome ?? "-"}</span>
                 </p>
 
                 {p.reasons && (

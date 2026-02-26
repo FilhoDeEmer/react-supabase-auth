@@ -1,26 +1,37 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import AuthLayout from "../layout/AuthLayout";
 import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
+import { IconBrandGoogleFilled } from "@tabler/icons-react";
+
+function safeDecode(v: string) {
+  try {
+    return decodeURIComponent(v);
+  } catch {
+    return v;
+  }
+}
 
 export default function Login() {
   const { signInWithPassword, user, signInWithGoogle } = useAuth();
   const [search] = useSearchParams();
   const navigate = useNavigate();
 
-  const redirectParam = search.get("redirect") ?? search.get("redirectTo");
+  const redirectParam = useMemo(
+    () => search.get("redirectTo") ?? search.get("redirect") ?? null,
+    [search],
+  );
+
+  const redirectTo = useMemo(() => {
+    return redirectParam ? safeDecode(redirectParam) : "/dashboard";
+  }, [redirectParam]);
 
   useEffect(() => {
-    if (user) {
-      const to = redirectParam
-        ? decodeURIComponent(redirectParam)
-        : "/dashboard";
-      navigate(to, { replace: true });
-    }
-  }, [user, navigate, redirectParam]);
+    if (user) navigate(redirectTo, { replace: true });
+  }, [user, navigate, redirectTo]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -33,16 +44,19 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await signInWithPassword(email, password);
-      const redirect = search.get("redirect");
-      navigate(redirect ? decodeURIComponent(redirect) : "/dashboard", {
-        replace: true,
-      });
+      const normalizedEmail = email.trim().toLowerCase();
+      await signInWithPassword(normalizedEmail, password);
+
+      // Não precisa navegar aqui; o useEffect vai redirecionar quando o user atualizar.
+      // Mas se você quiser manter navegação imediata, pode descomentar:
+      // navigate(redirectTo, { replace: true });
     } catch (err: any) {
       setErrorMsg(err?.message ?? "Falha no login");
-    } finally {
       setLoading(false);
+      return;
     }
+
+    setLoading(false);
   }
 
   return (
@@ -92,20 +106,23 @@ export default function Login() {
             {errorMsg}
           </div>
         )}
-        <br></br>
-        <Button type="submit" disabled={loading}>
-          {loading ? "Entrando..." : "Entrar"}
-        </Button>
-        <br></br>
-        <br></br>
-        <Button
-          type="button"
-          onClick={() => signInWithGoogle()}
-          variant="secondary">
-          Entrar com Google
-        </Button>
-        <br></br>
-        <br></br>
+
+        <div className="grid gap-2">
+          <Button type="submit" disabled={loading || !email.trim() || !password}>
+            {loading ? "Entrando..." : "Entrar"}
+          </Button>
+
+          <Button
+            type="button"
+            onClick={() => signInWithGoogle()}
+            variant="secondary"
+            disabled={loading}
+          >
+            <IconBrandGoogleFilled size={18} />
+            Entrar com Google
+          </Button>
+        </div>
+
         <div className="flex items-center justify-between text-sm">
           <Link
             to="/forgot-password"
@@ -122,6 +139,16 @@ export default function Login() {
           </Link>
         </div>
       </form>
+
+      <div className="mt-4 flex sm:hidden items-center justify-center">
+        <Button
+          variant="secondary"
+          className="w-auto h-10 px-4"
+          onClick={() => navigate("/dashboard/pokedex", { replace: true })}
+        >
+          <span>Ver Pokédex</span>
+        </Button>
+      </div>
     </AuthLayout>
   );
 }

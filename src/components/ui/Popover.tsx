@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type PopoverProps = {
   trigger: React.ReactNode;
@@ -7,44 +7,81 @@ type PopoverProps = {
   panelClassName?: string;
 };
 
+function getFocusable(root: HTMLElement) {
+  const selectors = [
+    "a[href]",
+    "button:not([disabled])",
+    "input:not([disabled])",
+    "select:not([disabled])",
+    "textarea:not([disabled])",
+    "[tabindex]:not([tabindex='-1'])",
+  ].join(",");
+  return Array.from(root.querySelectorAll<HTMLElement>(selectors));
+}
+
 export default function Popover({
   trigger,
   children,
   className,
   panelClassName,
 }: PopoverProps) {
-  const id = useId();
   const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLSpanElement | null>(null);
 
-  // fecha ao clicar fora
+  const wrapRef = useRef<HTMLSpanElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+
+  const panelId = useMemo(
+    () => `popover-${Math.random().toString(36).slice(2, 9)}`,
+    [],
+  );
+
+  // fecha ao clicar fora (mouse + touch)
   useEffect(() => {
-    function onDown(e: MouseEvent) {
+    const onPointerDown = (e: PointerEvent) => {
       if (!open) return;
       const el = wrapRef.current;
       if (!el) return;
       if (!el.contains(e.target as Node)) setOpen(false);
-    }
-    window.addEventListener("mousedown", onDown);
-    return () => window.removeEventListener("mousedown", onDown);
+    };
+
+    window.addEventListener("pointerdown", onPointerDown);
+    return () => window.removeEventListener("pointerdown", onPointerDown);
   }, [open]);
 
-  // fecha no ESC
+  // fecha no ESC e devolve foco
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
+
+  // foco ao abrir
+  useEffect(() => {
+    if (!open) return;
+
+    const panel = panelRef.current;
+    if (!panel) return;
+
+    // tenta focar primeiro elemento focável, senão foca o painel
+    const focusables = getFocusable(panel);
+    (focusables[0] ?? panel).focus();
+  }, [open]);
 
   return (
     <span ref={wrapRef} className={`relative inline-flex ${className ?? ""}`}>
       <button
+        ref={triggerRef}
         type="button"
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-controls={id}
+        aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
         className="text-zinc-200 underline decoration-zinc-700 underline-offset-2 hover:text-white"
       >
@@ -53,8 +90,10 @@ export default function Popover({
 
       {open && (
         <div
-          id={id}
+          ref={panelRef}
+          id={panelId}
           role="dialog"
+          tabIndex={-1}
           className={`absolute left-0 top-full z-50 mt-2 w-72 rounded-xl border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-100 shadow-xl ${panelClassName ?? ""}`}
         >
           {children}

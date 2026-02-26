@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import AuthLayout from "../layout/AuthLayout";
+import Button from "../components/ui/Button";
 
 export default function ForgotPassword() {
   const { resetPassword } = useAuth();
@@ -12,17 +13,19 @@ export default function ForgotPassword() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) return;
+
     setMsg(null);
     setErrorMsg(null);
     setLoading(true);
 
     try {
-      await resetPassword(email);
-      setMsg(
-        "Um e-mail de redefinição de senha foi enviado, verifique sua caixa de entrada.",
-      );
+      await resetPassword(normalizedEmail);
+      setMsg("Um e-mail de redefinição de senha foi enviado. Verifique sua caixa de entrada.");
     } catch (err: any) {
-      setErrorMsg(err.message ?? "Falha na solicitação");
+      setErrorMsg(err?.message ?? "Falha na solicitação");
     } finally {
       setLoading(false);
     }
@@ -55,19 +58,32 @@ export default function ForgotPassword() {
             className="w-full h-11 rounded-lg bg-zinc-950/60 border border-zinc-800 px-3 text-zinc-100 placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-indigo-500/60 focus:border-indigo-500/60"
           />
         </div>
-        <br></br>
-        <br></br>
-        <div className="flex items-center justify-between">
-          <button type="submit" disabled={loading}>
+
+        {(msg || errorMsg) && (
+          <div className="space-y-2">
+            {msg && (
+              <div className="rounded-lg border border-emerald-900/50 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-200">
+                {msg}
+              </div>
+            )}
+            {errorMsg && (
+              <div className="rounded-lg border border-red-900/50 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+                {errorMsg}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="pt-2 flex items-center justify-between">
+          <Button type="submit" disabled={loading || !email.trim()}>
             {loading ? "Enviando..." : "Enviar"}
-          </button>
+          </Button>
+
           <Link to="/login" className="text-sm text-indigo-500 hover:underline">
             Login
           </Link>
         </div>
       </form>
-      {msg && <p style={{ color: "crimson" }}>{msg}</p>}
-      {errorMsg && <p style={{ color: "red" }}>{errorMsg}</p>}
     </AuthLayout>
   );
 }

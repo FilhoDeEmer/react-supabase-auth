@@ -44,7 +44,7 @@ type PokemonBancoRow = {
   natures: null | {
     id: number;
     nome: string | null;
-    postivo: string | null;
+    positivo: string | null;
     negativo: string | null;
   };
 
@@ -62,6 +62,7 @@ type PokemonBaseOption = {
   id: number;
   pokemon: string;
   dex_num: number | null;
+  main_skill_obj: null | { id: number; nome: string; descricao: string | null };
 };
 
 type NatureOption = {
@@ -164,7 +165,7 @@ const SUB_KEYS = [
 
 export default function Banco() {
   const { user } = useAuth();
-  const [loading, setloading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [items, setItems] = useState<PokemonBancoRow[]>([]);
@@ -229,6 +230,17 @@ export default function Banco() {
     [items, confirmId],
   );
 
+  const pokemonBaseById = useMemo(() => {
+    const m = new Map<number, PokemonBaseOption>();
+    pokemonOptions.forEach((p) => m.set(p.id, p));
+    return m;
+  }, [pokemonOptions]);
+
+  const selectedBase =
+    form.id_base === ""
+      ? null
+      : (pokemonBaseById.get(Number(form.id_base)) ?? null);
+
   type TipoOption = { id: number; tipo: string | null };
   const [typeOptions, setTypeOptions] = useState<TipoOption[]>([]);
 
@@ -245,7 +257,9 @@ export default function Banco() {
     const [base, nats] = await Promise.all([
       supabase
         .from("pokemon_base")
-        .select("id, pokemon, dex_num")
+        .select(
+          "id, pokemon, dex_num, main_skill_obj:main_skill (id, nome, descricao)",
+        )
         .order("dex_num"),
       supabase
         .from("natures")
@@ -271,7 +285,7 @@ export default function Banco() {
   async function loadAll() {
     if (!user?.id) return;
 
-    setloading(true);
+    setLoading(true);
     setErrorMsg(null);
 
     try {
@@ -324,7 +338,7 @@ export default function Banco() {
     } catch (e: any) {
       setErrorMsg(e?.message ?? "Falha ao carregar");
     } finally {
-      setloading(false);
+      setLoading(false);
     }
   }
 
@@ -432,7 +446,7 @@ export default function Banco() {
     if (!user?.id) return;
 
     setErrorMsg(null);
-    setloading(true);
+    setLoading(true);
 
     try {
       const { error } = await supabase
@@ -441,14 +455,14 @@ export default function Banco() {
         .eq("id", rowId)
         .eq("user_id", user.id);
 
-      setloading(false);
+      setLoading(false);
 
       if (error) throw error;
       await loadAll();
     } catch (e: any) {
       setErrorMsg(e?.message ?? "Falha ao excluir");
     } finally {
-      setloading(false);
+      setLoading(false);
       setConfirmId(null);
     }
   }
@@ -523,7 +537,7 @@ export default function Banco() {
         >
           <option value="">Ordenar por level?</option>
           <option value="level_desc">Level ↑ (maior)</option>
-          <option value="level_acs">Level ↓ (menor)</option>
+          <option value="level_asc">Level ↓ (menor)</option>
         </select>
 
         <select
@@ -728,19 +742,15 @@ export default function Banco() {
                     <p className="text-xs text-zinc-400">
                       Main Skill:{" "}
                       <Popover
-                        trigger={
-                          items.find((i) => i.id === form.id)?.pokemon_base
-                            ?.main_skill_obj?.nome ?? "-"
-                        }
+                        trigger={selectedBase?.main_skill_obj?.nome ?? "-"}
                       >
                         <div className="space-y-2">
                           <p className="text-sm font-semibold text-zinc-50">
-                            {items.find((i) => i.id === form.id)?.pokemon_base
-                              ?.main_skill_obj?.nome ?? "-"}
+                            {selectedBase?.main_skill_obj?.nome ?? "-"}
                           </p>
                           <p className="text-zinc-300">
-                            {items.find((i) => i.id === form.id)?.pokemon_base
-                              ?.main_skill_obj?.descricao ?? "Sem descrição"}
+                            {selectedBase?.main_skill_obj?.descricao ??
+                              "Sem descrição"}
                           </p>
                         </div>
                       </Popover>

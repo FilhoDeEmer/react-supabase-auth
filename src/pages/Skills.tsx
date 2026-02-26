@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import DashboardLayout from "../layout/DashboardLayout";
 import { supabase } from "../lib/supabase";
 import FilterPills from "../components/ui/FilterPills";
 import Pagination from "../components/ui/Pagination";
+import Button from "../components/ui/Button";
 
 type MainSkillRow = {
   id: number;
@@ -28,6 +29,7 @@ const MODE_OPTIONS = [
 
 type Mode = "main" | "sub";
 type SortDir = "asc" | "desc";
+type SortBy = "nome" | "qualidade";
 
 export default function Skills() {
   const [mode, setMode] = useState<Mode>("main");
@@ -38,7 +40,7 @@ export default function Skills() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
 
-  const [sortBy, setSortBy] = useState<"nome" | "qualidade">("nome");
+  const [sortBy, setSortBy] = useState<SortBy>("nome");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   const [loading, setLoading] = useState(true);
@@ -52,32 +54,51 @@ export default function Skills() {
     [total],
   );
 
+  // debounce do search
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
     return () => clearTimeout(t);
   }, [search]);
 
+  // quando muda filtros, volta page 1
   useEffect(() => {
     setPage(1);
   }, [mode, debouncedSearch, sortBy, sortDir]);
 
-  async function load() {
+  // quando muda totalPages, garante page dentro do range
+  useEffect(() => {
+    setPage((p) => Math.min(Math.max(1, p), totalPages));
+  }, [totalPages]);
+
+  // evita "flash" de itens do modo anterior ao trocar mode
+  useEffect(() => {
+    setErrorMsg(null);
+    if (mode === "main") setSubItems([]);
+    else setMainItems([]);
+  }, [mode]);
+
+  const load = useCallback(async () => {
     setLoading(true);
     setErrorMsg(null);
 
     try {
-      const from = (page - 1) * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
+      const term = debouncedSearch;
 
       if (mode === "main") {
+        // monta query sem range primeiro
         let q = supabase
           .from("main_skills")
-          .select("id, nome, descricao, informacao", { count: "exact" })
-          .range(from, to);
+          .select("id, nome, descricao, informacao", { count: "exact" });
 
-        if (debouncedSearch) q = q.ilike("nome", `%${debouncedSearch}%`);
+        if (term) q = q.ilike("nome", `%${term}%`);
 
+        // sort
         q = q.order("nome", { ascending: sortDir === "asc" });
+
+        // range no final
+        const from = (page - 1) * PAGE_SIZE;
+        const to = from + PAGE_SIZE - 1;
+        q = q.range(from, to);
 
         const { data, error, count } = await q;
         if (error) throw error;
@@ -87,11 +108,11 @@ export default function Skills() {
       } else {
         let q = supabase
           .from("sub_skills")
-          .select("id, nome, qualidade, efeito, informacao", { count: "exact" })
-          .range(from, to);
+          .select("id, nome, qualidade, efeito, informacao", { count: "exact" });
 
-        if (debouncedSearch) q = q.ilike("nome", `%${debouncedSearch}%`);
+        if (term) q = q.ilike("nome", `%${term}%`);
 
+        // sort
         q =
           sortBy === "qualidade"
             ? q.order("qualidade", {
@@ -99,6 +120,10 @@ export default function Skills() {
                 nullsFirst: false,
               })
             : q.order("nome", { ascending: sortDir === "asc" });
+
+        const from = (page - 1) * PAGE_SIZE;
+        const to = from + PAGE_SIZE - 1;
+        q = q.range(from, to);
 
         const { data, error, count } = await q;
         if (error) throw error;
@@ -111,13 +136,13 @@ export default function Skills() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [mode, page, debouncedSearch, sortBy, sortDir]);
 
   useEffect(() => {
     load();
-  }, [mode, page, debouncedSearch, sortBy, sortDir]);
+  }, [load]);
 
-  function toggleSort(col: "nome" | "qualidade") {
+  function toggleSort(col: SortBy) {
     if (sortBy !== col) {
       setSortBy(col);
       setSortDir("asc");
@@ -130,12 +155,11 @@ export default function Skills() {
 
   return (
     <DashboardLayout title="Skills">
-      {/*Top */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold">Skills</h2>
           <p className="text-sm text-zinc-400">
-            {mode === "main" ? "Main Skills" : "Sub Skills"} -{" "}
+            {mode === "main" ? "Main Skills" : "Sub Skills"} —{" "}
             {loading ? "..." : total} resultados
           </p>
 
@@ -154,17 +178,24 @@ export default function Skills() {
             placeholder="Buscar por nome"
             className="h-10 w-full sm:w-80 rounded-lg bg-zinc-950/60 border border-zinc-800 px-3 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-indigo-500/60"
           />
+
+          <Button
+            variant="secondary"
+            className="h-10 px-4 w-auto"
+            onClick={load}
+            disabled={loading}
+          >
+            Recarregar
+          </Button>
         </div>
       </div>
 
-      {/*Error */}
       {errorMsg && (
         <div className="mt-4 rounded-lg border border-red-900/50 bg-red-950/40 px-3 py-2 text-sm text-red-200">
           {errorMsg}
         </div>
       )}
 
-      {/*Tabela */}
       <div className="mt-5 rounded-2xl border border-zinc-800 bg-zinc-900/40 overflow-hidden">
         {loading ? (
           <div className="p-5">
@@ -256,7 +287,6 @@ export default function Skills() {
         )}
       </div>
 
-      {/* Pagination */}
       <Pagination
         page={page}
         totalPages={totalPages}

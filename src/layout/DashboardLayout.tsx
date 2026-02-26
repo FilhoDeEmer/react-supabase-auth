@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import Button from "../components/ui/Button";
@@ -14,8 +14,9 @@ import {
   Menu,
   LogOut,
   Info,
-  CopyPlus,
+  MapPinned,
   LogIn,
+  X,
 } from "lucide-react";
 import UserAvatar from "../components/ui/UserAvatar";
 
@@ -24,18 +25,19 @@ type DashboardLayoutProps = {
   children: React.ReactNode;
 };
 
-function SidebarContent({
-  onNavigate,
-  collapsed,
-}: {
+type SidebarContentProps = {
   onNavigate?: () => void;
   collapsed?: boolean;
-}) {
+};
+
+function SidebarContent({ onNavigate, collapsed }: SidebarContentProps) {
   const linkBase =
     "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition";
   const linkActive = "bg-zinc-800 text-zinc-100";
   const linkInactive = "text-zinc-300 hover:bg-zinc-900 hover:text-zinc-100";
   const labelClass = collapsed ? "hidden" : "block";
+
+  const tt = (label: string) => (collapsed ? label : undefined);
 
   return (
     <div className="h-full flex flex-col">
@@ -44,7 +46,7 @@ function SidebarContent({
         <Link to="/dashboard" className="font-semibold text-zinc-100">
           Sleep
         </Link>
-        {!collapsed && <p className="text-xs text-zinc-400 mt-1">Dashboard</p>}
+        {!collapsed && <p className="text-xs text-zinc-400 mt-1">Menu</p>}
       </div>
 
       {/* Navigation Links */}
@@ -52,17 +54,19 @@ function SidebarContent({
         <NavLink
           to="/dashboard"
           end
+          title={tt("Mapa")}
           onClick={onNavigate}
           className={({ isActive }) =>
             `${linkBase} ${isActive ? linkActive : linkInactive}`
           }
         >
-          <CopyPlus className="h-4 w-4" />
-          <span className={labelClass}>Time</span>
+          <MapPinned className="h-4 w-4" />
+          <span className={labelClass}>Mapa</span>
         </NavLink>
 
         <NavLink
           to="/dashboard/banco"
+          title={tt("Banco")}
           onClick={onNavigate}
           className={({ isActive }) =>
             `${linkBase} ${isActive ? linkActive : linkInactive}`
@@ -71,8 +75,10 @@ function SidebarContent({
           <Package2 className="h-4 w-4" />
           <span className={labelClass}>Banco</span>
         </NavLink>
+
         <NavLink
           to="/dashboard/pokedex"
+          title={tt("Pokédex")}
           onClick={onNavigate}
           className={({ isActive }) =>
             `${linkBase} ${isActive ? linkActive : linkInactive}`
@@ -81,8 +87,10 @@ function SidebarContent({
           <BookOpen className="h-4 w-4" />
           <span className={labelClass}>Pokédex</span>
         </NavLink>
+
         <NavLink
           to="/dashboard/receitas"
+          title={tt("Receitas")}
           onClick={onNavigate}
           className={({ isActive }) =>
             `${linkBase} ${isActive ? linkActive : linkInactive}`
@@ -91,8 +99,10 @@ function SidebarContent({
           <CookingPot className="h-4 w-4" />
           <span className={labelClass}>Receitas</span>
         </NavLink>
+
         <NavLink
           to="/dashboard/ingredientes"
+          title={tt("Ingredientes")}
           onClick={onNavigate}
           className={({ isActive }) =>
             `${linkBase} ${isActive ? linkActive : linkInactive}`
@@ -101,8 +111,10 @@ function SidebarContent({
           <LeafyGreen className="h-4 w-4" />
           <span className={labelClass}>Ingredientes</span>
         </NavLink>
+
         <NavLink
           to="/dashboard/skills"
+          title={tt("Skills")}
           onClick={onNavigate}
           className={({ isActive }) =>
             `${linkBase} ${isActive ? linkActive : linkInactive}`
@@ -112,9 +124,9 @@ function SidebarContent({
           <span className={labelClass}>Skills</span>
         </NavLink>
 
-        {/*Exemplo para criação de novos links*/}
         <NavLink
           to="/sobre"
+          title={tt("Sobre")}
           onClick={onNavigate}
           className={({ isActive }) =>
             `${linkBase} ${isActive ? linkActive : linkInactive}`
@@ -123,8 +135,10 @@ function SidebarContent({
           <Info className="h-4 w-4" />
           <span className={labelClass}>Sobre</span>
         </NavLink>
+
         <NavLink
           to="/dashboard/settings"
+          title={tt("Settings")}
           onClick={onNavigate}
           className={({ isActive }) =>
             `${linkBase} ${isActive ? linkActive : linkInactive}`
@@ -153,11 +167,12 @@ export default function DashboardLayout({
   title = "Dashboard",
   children,
 }: DashboardLayoutProps) {
-  const { user, signOut } = useAuth();
-  const { profile, profileLoading } = useAuth();
+  const { user, signOut, profile, profileLoading } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
-
   const [collapsed, setCollapsed] = useState(false);
+
+  const menuBtnRef = useRef<HTMLButtonElement | null>(null);
+
   const expandedW = "lg:w-64";
   const collapsedW = "lg:w-20";
   const desktopSidebarWidth = collapsed ? collapsedW : expandedW;
@@ -166,59 +181,97 @@ export default function DashboardLayout({
   const navigate = useNavigate();
   const location = useLocation();
 
-  if (profileLoading) {
-    return <p>Carregando perfil...</p>;
-  }
+  // trava scroll quando mobile drawer abre
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [mobileOpen]);
+
+  const closeMobile = () => {
+    setMobileOpen(false);
+    setTimeout(() => menuBtnRef.current?.focus(), 0);
+  };
+
+  // fecha no ESC (mobile)
+  useEffect(() => {
+    if (!mobileOpen) return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeMobile();
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mobileOpen]);
+
+  if (profileLoading) return <p>Carregando perfil...</p>;
+
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-10 overflow-x-hidden">
-      {/* Mobile Sidebar */}
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 overflow-x-hidden">
+      {/* Backdrop mobile */}
       {mobileOpen && (
         <button
-          title="fechar menu"
+          title="Fechar menu"
           className="fixed inset-0 z-40 bg-black/60 lg:hidden"
-          onClick={() => setMobileOpen(false)}
-          arial-label="Fechar menu"
+          onClick={closeMobile}
+          aria-label="Fechar menu"
         />
       )}
+
+      {/* Mobile drawer */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-72 border-r border-zinc-800 bg-zinc-950 lg:hidden transform transition-transform duration-200 ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+        aria-hidden={!mobileOpen}
+      >
+        <div className="h-14 px-3 flex items-center justify-end border-b border-zinc-800">
+          <Button
+            variant="ghost"
+            onClick={closeMobile}
+            aria-label="Fechar menu"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <SidebarContent onNavigate={closeMobile} />
+      </aside>
 
       {/* Desktop Sidebar */}
       <aside
         className={`hidden lg:fixed lg:inset-y-0 lg:left-0 ${desktopSidebarWidth} lg:block border-r border-zinc-800 bg-zinc-950 transition-[width] duration-200`}
       >
-        {/*Botão Colapsar*/}
-        <div className="h-14 px-3 flex items-center justify-end border-b border-zinc-800">
-          <Button
-            variant="ghost"
-            onClick={() => setCollapsed((v) => !v)}
-            aria-label={collapsed ? "Expandir sidebar" : "Recolher sidebar"}
-          >
-            {collapsed ? (
-              <ChevronRight className="h-4 w-4" />
-            ) : (
-              <ChevronLeft className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
+        <div className="h-14 px-3 flex items-center justify-end border-b border-zinc-800" />
         <SidebarContent collapsed={collapsed} />
       </aside>
-      {/* Mobile drawer */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 w-72 bg-zinc-950 border-r border-zinc-800 lg:hidden transform transition-transform ${
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <SidebarContent onNavigate={() => setMobileOpen(false)} />
-      </aside>
 
-      {/*Topbar Full Width  */}
-
-      {/* Main Content Area */}
+      {/* Header */}
       <header className="sticky top-0 z-30 border-b border-zinc-800 bg-zinc-950/70 backdrop-blur">
         <div
           className={`h-14 px-4 flex items-center justify-between ${desktopPaddingLeft}`}
         >
           <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              onClick={() => setCollapsed((v) => !v)}
+              aria-label={collapsed ? "Expandir sidebar" : "Recolher sidebar"}
+              className="hidden lg:inline-flex"
+            >
+              {collapsed ? (
+                <ChevronRight className="hidden sm:flex h-4 w-4" />
+              ) : (
+                <ChevronLeft className="hidden sm:flex h-4 w-4" />
+              )}
+            </Button>
+
             <button
+              ref={menuBtnRef}
               className="lg:hidden inline-flex items-center justify-center rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-sm hover:bg-zinc-900 transition"
               onClick={() => setMobileOpen(true)}
               aria-label="Abrir menu"
@@ -226,39 +279,54 @@ export default function DashboardLayout({
               <Menu className="h-4 w-4" />
             </button>
 
-            <h1 className="text-sm sm:text-base font-semibold"> {title}</h1>
+            <h1 className="text-sm sm:text-base font-semibold">{title}</h1>
           </div>
 
           <div className="flex items-center gap-3">
-            <UserAvatar size={36} />
-            <div className="hidden sm:block text-right">
-              <p className="text-sm">{profile?.display_name}</p>
-            </div>
+            {user && profile ? (
+              <>
+                <UserAvatar size={36} />
+                <div className="hidden sm:block text-right">
+                  <p className="text-sm">{profile.display_name}</p>
+                </div>
+              </>
+            ) : null}
 
             <Button
               onClick={async () => {
-                if (user) {
-                  await Promise.resolve(signOut?.());
-                  navigate("/login", { replace: true });
-                } else {
-                  navigate("/login", {
-                    state: { from: location.pathname },
-                    replace: true,
-                  });
+                try {
+                  if (user) {
+                    await signOut?.();
+                    navigate("/sobre", { replace: true });
+                  } else {
+                    navigate("/login", {
+                      state: { from: location.pathname },
+                      replace: true,
+                    });
+                  }
+                } catch (e) {
+                  console.error(e);
                 }
               }}
               variant="primary"
               className="w-auto h-10 px-4"
             >
               {user ? (
-                <LogOut className="h-4 w-4" />
+                <>
+                  <LogOut className="h-4 w-4" />
+                  <span>Sair</span>
+                </>
               ) : (
-                <LogIn className="h-4 w-4" />
+                <>
+                  <LogIn className="h-4 w-4" />
+                  <span>Entrar</span>
+                </>
               )}
             </Button>
           </div>
         </div>
       </header>
+
       {/* Content */}
       <div className={desktopPaddingLeft}>
         <main className="p-4 sm:p-6">

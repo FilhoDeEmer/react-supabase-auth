@@ -38,43 +38,54 @@ const PAGE_SIZE = 24;
 
 export default function Pokedex() {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
 
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<PokemonBaseRow | null>(null);
 
   const [items, setItems] = useState<PokemonBaseRow[]>([]);
   const [total, setTotal] = useState(0);
 
-  const ingList = useMemo(() => {
-    return (
-      selected?.pokemon_ingrediente
-        ?.map((x) => x.ingredientes)
-        .filter((ing): ing is {id: number; nome: string | null } =>
-          !!ing && typeof ing.id === "number"
-    ) ?? []
-  );
-  }, [selected]);
+  // debounce do search
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // quando muda busca, volta pra página 1
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
 
   const totalPages = useMemo(() => {
     return Math.max(1, Math.ceil(total / PAGE_SIZE));
   }, [total]);
+
+  const ingList = useMemo(() => {
+    return (
+      selected?.pokemon_ingrediente
+        ?.map((x) => x.ingredientes)
+        .filter(
+          (ing): ing is { id: number; nome: string | null } =>
+            !!ing && typeof ing.id === "number",
+        ) ?? []
+    );
+  }, [selected]);
 
   async function load() {
     setLoading(true);
     setErrorMsg(null);
 
     try {
-      const from = (page - 1) * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
-
-      // Query base
       let q = supabase
         .from("pokemon_base")
         .select(
-          ` id,
+          `
+            id,
             pokemon,
             dex_num,
             specialty,
@@ -82,21 +93,20 @@ export default function Pokedex() {
             carry_base,
             frequency,
             tipo:type (tipo, berry),
-            main_skill:main_skills (id, nome, descricao),
+
+            main_skill:main_skill (id, nome, descricao),
+
             ingredientes,
             pokemon_ingrediente:pokemon_ingrediente (
               ingredientes:id_ingrediente (id, nome)
             )
-            `,
+          `,
           { count: "exact" },
-        )
-        .order("dex_num", { ascending: true })
-        .range(from, to);
+        );
 
-      // Filtro de busca
-      const term = search.trim();
+      // filtros
+      const term = debouncedSearch;
       if (term) {
-        // Busca por nome (ilike) OU por dex_num (se for número)
         const maybeDex = Number(term);
         if (!Number.isNaN(maybeDex)) {
           q = q.or(`pokemon.ilike.%${term}%,dex_num.eq.${maybeDex}`);
@@ -105,8 +115,15 @@ export default function Pokedex() {
         }
       }
 
-      const { data, error, count } = await q;
+      // order
+      q = q.order("dex_num", { ascending: true });
 
+      // 2) aplica range no final
+      const from = (page - 1) * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      q = q.range(from, to);
+
+      const { data, error, count } = await q;
       if (error) throw error;
 
       setItems((data ?? []) as any);
@@ -118,26 +135,17 @@ export default function Pokedex() {
     }
   }
 
-  // carrega quando mudar página
+  // carrega quando page ou busca “debounced” mudarem
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
-
-  // quando mudar search, volta pra página 1 e recarrega
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setPage(1);
-      load();
-    }, 300); // debounce simples
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
+  }, [page, debouncedSearch]);
 
   function openInfo(pokemon: PokemonBaseRow) {
     setSelected(pokemon);
     setOpen(true);
   }
+
   function closeInfo() {
     setOpen(false);
     setSelected(null);
@@ -145,7 +153,6 @@ export default function Pokedex() {
 
   return (
     <DashboardLayout title="Pokédex">
-      {/* Barra de topo */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold">Pokémons disponíveis</h2>
@@ -164,14 +171,12 @@ export default function Pokedex() {
         </div>
       </div>
 
-      {/* Erro */}
       {errorMsg && (
         <div className="mt-4 rounded-lg border border-red-900/50 bg-red-950/40 px-3 py-2 text-sm text-red-200">
           {errorMsg}
         </div>
       )}
 
-      {/* Conteúdo */}
       <div className="mt-5">
         {loading ? (
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5">
@@ -203,15 +208,17 @@ export default function Pokedex() {
                   />
                 </div>
 
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-xs text-zinc-400">Sleep type</p>
-                  <p>{p.sleep_type ?? "—"}</p>
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <div className="text-xs text-zinc-400">
+                    <span>Sleep:</span>{" "}
+                    <span className="text-zinc-200">{p.sleep_type ?? "—"}</span>
+                  </div>
+
                   <span className="text-[10px] rounded-full bg-zinc-800 px-2 py-0.5 text-zinc-200">
                     {p.specialty ?? "—"}
                   </span>
                 </div>
 
-                {/* espaço pra botões futuros */}
                 <div className="mt-4">
                   <Button
                     variant="secondary"
@@ -228,7 +235,6 @@ export default function Pokedex() {
         )}
       </div>
 
-      {/* Paginação */}
       <Pagination
         page={page}
         totalPages={totalPages}
@@ -237,7 +243,6 @@ export default function Pokedex() {
         pageSize={PAGE_SIZE}
       />
 
-      {/*Modal info */}
       {open && selected && (
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/60" onClick={closeInfo} />
@@ -248,8 +253,7 @@ export default function Pokedex() {
                   #{selected.dex_num} - {selected.pokemon}
                 </p>
                 <p className="text-sm text-zinc-400">
-                  {selected.tipo?.tipo ?? "Sem tipo"} •{" "}
-                  {selected.specialty ?? "-"}
+                  {selected.tipo?.tipo ?? "Sem tipo"} • {selected.specialty ?? "-"}
                 </p>
               </div>
 
@@ -257,26 +261,20 @@ export default function Pokedex() {
                 className="text-zinc-400 hover:text-white"
                 onClick={closeInfo}
                 type="button"
+                aria-label="Fechar"
               >
-                {" "}
-                <X className="h-4 w-4"></X>
+                <X className="h-4 w-4" />
               </button>
             </div>
 
             <div className="mt-4 grid grid-cols-[70%_30%] gap-4 items-start">
               <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 p-3 space-y-2">
                 <p className="text-xs text-zinc-400">Sleep type</p>
-                <p className="text-xs text-zinc-100">
-                  {selected.sleep_type ?? "-"}
-                </p>
+                <p className="text-xs text-zinc-100">{selected.sleep_type ?? "-"}</p>
 
                 <p className="text-xs text-zinc-400">Main Skill</p>
-                <p className="text-xs text-zinc-100">
-                  {selected.main_skill?.nome ?? "-"}
-                </p>
-                <p className="text-xs text-zinc-100">
-                  {selected.main_skill?.descricao ?? "-"}
-                </p>
+                <p className="text-xs text-zinc-100">{selected.main_skill?.nome ?? "-"}</p>
+                <p className="text-xs text-zinc-100">{selected.main_skill?.descricao ?? "-"}</p>
 
                 <p className="text-xs text-zinc-400">Ingredientes</p>
                 {ingList.length ? (
@@ -290,13 +288,9 @@ export default function Pokedex() {
                           src={getIngredientImageUrl(ing.nome ?? "")}
                           alt={ing.nome ?? `Ingrediente ${ing.id}`}
                           className="h-5 w-5 object-contain"
-                          onError={(e) =>
-                            (e.currentTarget.src = RECIPE_PLACEHOLDER)
-                          }
+                          onError={(e) => (e.currentTarget.src = RECIPE_PLACEHOLDER)}
                         />
-                        <span className="text-xs text-zinc-100">
-                          {ing.nome ?? "-"}
-                        </span>
+                        <span className="text-xs text-zinc-100">{ing.nome ?? "-"}</span>
                       </div>
                     ))}
                   </div>
@@ -305,14 +299,10 @@ export default function Pokedex() {
                 )}
 
                 <p className="text-xs text-zinc-400">Frequência de ajuda</p>
-                <p className="text-xs text-zinc-100">
-                  {selected.frequency ?? "-"}
-                </p>
+                <p className="text-xs text-zinc-100">{selected.frequency ?? "-"}</p>
 
                 <p className="text-xs text-zinc-400">Carry base</p>
-                <p className="text-xs text-zinc-100">
-                  {selected.carry_base ?? "-"}
-                </p>
+                <p className="text-xs text-zinc-100">{selected.carry_base ?? "-"}</p>
               </div>
 
               <div className="flex justify-center">
